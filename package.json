@@ -1,19 +1,20 @@
 {
-    "name":  "site-creator-vinext-starter",
+    "name":  "a25-shift-handover",
     "version":  "0.1.0",
     "private":  true,
     "engines":  {
                     "node":  "\u003e=22.13.0"
                 },
     "scripts":  {
-                    "dev":  "vinext dev",
-                    "build":  "vinext build",
-                    "start":  "vinext start",
+    "dev":  "next dev",
+    "build":  "next build",
+    "start":  "next start -H 0.0.0.0",
                     "test":  "npm run build \u0026\u0026 node --test tests/rendered-html.test.mjs",
                     "lint":  "eslint . --ignore-pattern dist --ignore-pattern .next",
                     "db:generate":  "drizzle-kit generate"
                 },
     "dependencies":  {
+                         "@supabase/supabase-js":  "^2.57.4",
                          "drizzle-orm":  "0.45.2",
                          "next":  "16.2.6",
                          "react":  "19.2.6",
