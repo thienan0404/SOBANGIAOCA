@@ -1,0 +1,1 @@
+﻿import Link from 'next/link';import {HandoverList} from '@/features/handovers';export default function Dashboard(){return <><div className="section-heading"><div><h1>Tổng quan ca trực</h1><p>Công việc cần tiếp nhận hôm nay</p></div><Link className="add-button" href="/handovers/create">＋ Tạo mới</Link></div><HandoverList/></>}

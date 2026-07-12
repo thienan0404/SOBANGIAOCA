@@ -1,0 +1,195 @@
+generator client {
+provider = "prisma-client-js"
+}
+datasource db {
+provider = "postgresql"
+url = env("DATABASE_URL")
+directUrl = env("DIRECT_URL")
+}
+
+enum HandoverStatus {
+DRAFT
+SUBMITTED
+PENDING_RECEIVER_CONFIRMATION
+SUPPLEMENT_REQUESTED
+RESUBMITTED
+CONFIRMED
+COMPLETED
+CANCELLED
+OVERDUE
+}
+enum ParticipantType {
+GIVER
+RECEIVER
+SUPERVISOR
+APPROVER
+}
+enum ItemPriority {
+LOW
+NORMAL
+HIGH
+URGENT
+}
+
+model Organization {
+id String @id @default(uuid()) @db.Uuid
+name String
+code String @unique
+branches Branch[]
+createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+@@map("organizations")
+}
+model Branch {
+id String @id @default(uuid()) @db.Uuid
+organizationId String @map("organization_id") @db.Uuid
+name String
+code String
+organization Organization @relation(fields:[organizationId],references:[id])
+memberships BranchMembership[]
+handovers Handover[]
+shifts ShiftInstance[]
+@@unique([organizationId,code])
+@@map("branches")
+}
+model Profile {
+id String @id @db.Uuid
+organizationId String @map("organization_id") @db.Uuid
+fullName String @map("full_name")
+email String
+isActive Boolean @default(true) @map("is_active")
+memberships BranchMembership[]
+createdHandovers Handover[] @relation("HandoverCreator")
+participants HandoverParticipant[]
+@@map("profiles")
+}
+model Role {
+id String @id @default(uuid()) @db.Uuid
+code String @unique
+name String
+memberships BranchMembership[]
+@@map("roles")
+}
+model BranchMembership {
+id String @id @default(uuid()) @db.Uuid
+profileId String @map("profile_id") @db.Uuid
+branchId String @map("branch_id") @db.Uuid
+roleId String @map("role_id") @db.Uuid
+isActive Boolean @default(true) @map("is_active")
+profile Profile @relation(fields:[profileId],references:[id])
+branch Branch @relation(fields:[branchId],references:[id])
+role Role @relation(fields:[roleId],references:[id])
+@@unique([profileId,branchId])
+@@map("branch_memberships")
+}
+model ShiftInstance {
+id String @id @default(uuid()) @db.Uuid
+organizationId String @map("organization_id") @db.Uuid
+branchId String @map("branch_id") @db.Uuid
+shiftCode String @map("shift_code")
+startsAt DateTime @map("starts_at") @db.Timestamptz
+endsAt DateTime @map("ends_at") @db.Timestamptz
+branch Branch @relation(fields:[branchId],references:[id])
+handovers Handover[]
+@@index([branchId,startsAt])
+@@map("shift_instances")
+}
+model Handover {
+id String @id @default(uuid()) @db.Uuid
+organizationId String @map("organization_id") @db.Uuid
+branchId String @map("branch_id") @db.Uuid
+shiftInstanceId String @map("shift_instance_id") @db.Uuid
+code String @unique
+status HandoverStatus @default(DRAFT)
+notes String?
+version Int @default(1)
+createdBy String @map("created_by") @db.Uuid
+submittedAt DateTime? @map("submitted_at") @db.Timestamptz
+confirmedAt DateTime? @map("confirmed_at") @db.Timestamptz
+completedAt DateTime? @map("completed_at") @db.Timestamptz
+createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+branch Branch @relation(fields:[branchId],references:[id])
+shift ShiftInstance @relation(fields:[shiftInstanceId],references:[id])
+creator Profile @relation("HandoverCreator",fields:[createdBy],references:[id])
+participants HandoverParticipant[]
+items HandoverItem[]
+amendments HandoverAmendment[]
+@@index([branchId,status,createdAt])
+@@map("handovers")
+}
+model HandoverParticipant {
+id String @id @default(uuid()) @db.Uuid
+organizationId String @map("organization_id") @db.Uuid
+branchId String @map("branch_id") @db.Uuid
+handoverId String @map("handover_id") @db.Uuid
+userId String @map("user_id") @db.Uuid
+participantType ParticipantType @map("participant_type")
+assignmentStatus String @default("ASSIGNED") @map("assignment_status")
+assignedAt DateTime @default(now()) @map("assigned_at") @db.Timestamptz
+acknowledgedAt DateTime? @map("acknowledged_at") @db.Timestamptz
+confirmedAt DateTime? @map("confirmed_at") @db.Timestamptz
+signaturePath String? @map("signature_path")
+createdBy String @map("created_by") @db.Uuid
+handover Handover @relation(fields:[handoverId],references:[id])
+user Profile @relation(fields:[userId],references:[id])
+@@index([branchId,userId,participantType,assignedAt])
+@@map("handover_participants")
+}
+model HandoverItem {
+id String @id @default(uuid()) @db.Uuid
+handoverId String @map("handover_id") @db.Uuid
+title String
+details String
+category String
+priority ItemPriority @default(NORMAL)
+roomNumber String? @map("room_number")
+createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+handover Handover @relation(fields:[handoverId],references:[id])
+@@map("handover_items")
+}
+model HandoverAmendment {
+id String @id @default(uuid()) @db.Uuid
+handoverId String @map("handover_id") @db.Uuid
+reason String
+content Json
+createdBy String @map("created_by") @db.Uuid
+createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+handover Handover @relation(fields:[handoverId],references:[id])
+@@map("handover_amendments")
+}
+model ChecklistResult {
+id String @id @default(uuid()) @db.Uuid
+handoverId String @map("handover_id") @db.Uuid
+itemCode String @map("item_code")
+isCompleted Boolean @default(false) @map("is_completed")
+completedBy String? @map("completed_by") @db.Uuid
+@@unique([handoverId,itemCode])
+@@map("checklist_results")
+}
+model AuditLog {
+id String @id @default(uuid()) @db.Uuid
+organizationId String @map("organization_id") @db.Uuid
+branchId String @map("branch_id") @db.Uuid
+actorId String @map("actor_id") @db.Uuid
+action String
+entityType String @map("entity_type")
+entityId String @map("entity_id") @db.Uuid
+oldValues Json? @map("old_values")
+newValues Json? @map("new_values")
+reason String?
+requestId String? @map("request_id")
+createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+@@index([branchId,createdAt])
+@@map("audit_logs")
+}
+model OutboxEvent {
+id String @id @default(uuid()) @db.Uuid
+aggregateType String @map("aggregate_type")
+aggregateId String @map("aggregate_id") @db.Uuid
+eventType String @map("event_type")
+payload Json
+idempotencyKey String @unique @map("idempotency_key")
+processedAt DateTime? @map("processed_at") @db.Timestamptz
+createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+@@map("outbox_events")
+}

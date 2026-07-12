@@ -1,0 +1,27 @@
+{
+    "name":  "@a25/worker",
+    "version":  "1.0.0",
+    "private":  true,
+    "scripts":  {
+                    "dev":  "tsx watch src/main.ts",
+                    "build":  "tsc -p tsconfig.json",
+                    "start:prod":  "node dist/main.js",
+                    "start:scheduler":  "node dist/scheduler.js",
+                    "lint":  "tsc --noEmit",
+                    "typecheck":  "tsc --noEmit",
+                    "test":  "vitest run --passWithNoTests"
+                },
+    "dependencies":  {
+                         "@a25/contracts":  "file:../../packages/contracts",
+                         "@a25/shared":  "file:../../packages/shared",
+                         "bullmq":  "^5.58.5",
+                         "ioredis":  "^5.7.0",
+                         "pino":  "^9.9.0"
+                     },
+    "devDependencies":  {
+                            "tsx":  "^4.20.5",
+                            "typescript":  "^5.9.3",
+                            "vitest":  "^3.2.4"
+                        },
+    "type":  "module"
+}

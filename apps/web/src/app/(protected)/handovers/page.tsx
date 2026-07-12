@@ -1,0 +1,1 @@
+﻿import Link from 'next/link';import {HandoverList} from '@/features/handovers';export default function Handovers(){return <><div className="section-heading"><h1>Danh sách bàn giao</h1><Link className="add-button" href="/handovers/create">＋ Tạo</Link></div><HandoverList/></>}

@@ -1,0 +1,1 @@
+{"name":"@a25/ui","version":"1.0.0","private":true,"type":"module","main":"./src/index.tsx","scripts":{"build":"tsc --noEmit","lint":"tsc --noEmit","typecheck":"tsc --noEmit","test":"vitest run --passWithNoTests"},"peerDependencies":{"react":"^19.0.0"},"devDependencies":{"@types/react":"^19.2.14","react":"19.2.6","typescript":"^5.9.3","vitest":"^3.2.4"}}

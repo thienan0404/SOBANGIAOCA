@@ -41,3 +41,15 @@ next-env.d.ts
 /.wrangler/
 /outputs/
 /work/
+
+# monorepo generated files
+**/node_modules/
+**/.next/
+**/dist/
+.turbo/
+.pnpm-store/
+package-lock.json
+
+**/*.tsbuildinfo
+**/test-results/
+**/playwright-report/

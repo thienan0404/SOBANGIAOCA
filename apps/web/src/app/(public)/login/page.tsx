@@ -1,0 +1,1 @@
+import {LoginForm} from './login-form';export default function LoginPage(){return <main className="auth-screen"><section className="auth-hero"><span className="brand-mark">A25</span><div><small>HỆ THỐNG NỘI BỘ</small><h1>Sổ bàn giao ca<br/>lễ tân điện tử</h1><p>Mọi công việc được tiếp nối, không điều gì bị bỏ quên.</p></div></section><LoginForm/></main>}

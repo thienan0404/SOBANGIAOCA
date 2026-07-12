@@ -1,42 +1,39 @@
 {
-    "name":  "a25-shift-handover",
-    "version":  "0.1.0",
+    "name":  "a25-electronic-handover",
+    "version":  "1.0.0",
     "private":  true,
+    "workspaces":  [
+                       "apps/*",
+                       "packages/*"
+                   ],
+    "packageManager":  "pnpm@11.11.0",
     "engines":  {
-                    "node":  "\u003e=22.13.0"
+                    "node":  "\u003e=22.14.0"
                 },
     "scripts":  {
-    "dev":  "next dev",
-    "build":  "next build",
-    "start":  "next start -H 0.0.0.0",
-                    "test":  "npm run build \u0026\u0026 node --test tests/rendered-html.test.mjs",
-                    "lint":  "eslint . --ignore-pattern dist --ignore-pattern .next",
-                    "db:generate":  "drizzle-kit generate"
+                    "dev":  "turbo run dev --parallel --filter=@a25/*",
+                    "dev:web":  "pnpm --filter @a25/web dev",
+                    "dev:api":  "pnpm --filter @a25/api dev",
+                    "dev:worker":  "pnpm --filter @a25/worker dev",
+                    "build":  "turbo run build --filter=@a25/*",
+                    "lint":  "turbo run lint --filter=@a25/*",
+                    "typecheck":  "turbo run typecheck --filter=@a25/*",
+                    "test":  "turbo run test --filter=@a25/*",
+                    "test:e2e":  "pnpm --filter @a25/web test:e2e",
+                    "format":  "prettier --write .",
+                    "db:generate":  "pnpm --filter @a25/api db:generate",
+                    "db:migrate":  "supabase db push",
+                    "db:seed":  "pnpm --filter @a25/api db:seed",
+                    "supabase:start":  "supabase start",
+                    "supabase:stop":  "supabase stop",
+                    "supabase:reset":  "supabase db reset"
                 },
-    "dependencies":  {
-                         "@supabase/supabase-js":  "^2.57.4",
-                         "drizzle-orm":  "0.45.2",
-                         "next":  "16.2.6",
-                         "react":  "19.2.6",
-                         "react-dom":  "19.2.6"
-                     },
     "devDependencies":  {
-                            "@cloudflare/vite-plugin":  "1.37.1",
-                            "@tailwindcss/postcss":  "4.2.1",
-                            "@types/node":  "22.19.19",
-                            "@types/react":  "19.2.14",
-                            "@types/react-dom":  "19.2.3",
-                            "@vitejs/plugin-react":  "6.0.2",
-                            "@vitejs/plugin-rsc":  "0.5.26",
-                            "drizzle-kit":  "0.31.10",
-                            "eslint":  "9.39.4",
-                            "eslint-config-next":  "16.2.6",
-                            "react-server-dom-webpack":  "19.2.6",
-                            "tailwindcss":  "4.2.1",
-                            "typescript":  "5.9.3",
-                            "vinext":  "0.0.50",
-                            "vite":  "8.0.13",
-                            "wrangler":  "4.92.0"
-                        },
-    "type":  "module"
+                            "@types/node":  "^22.19.19",
+                            "eslint":  "^9.39.4",
+                            "prettier":  "^3.6.2",
+                            "supabase":  "^2.39.2",
+                            "turbo":  "2.5.8",
+                            "typescript":  "^5.9.3"
+                        }
 }

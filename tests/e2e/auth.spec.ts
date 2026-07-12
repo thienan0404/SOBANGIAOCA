@@ -1,0 +1,1 @@
+﻿import {test,expect} from '@playwright/test';test('chuyển người chưa đăng nhập về trang đăng nhập',async({page})=>{await page.goto('/dashboard');await expect(page).toHaveURL(/login/);await expect(page.getByRole('heading',{name:'Sổ bàn giao ca lễ tân điện tử'})).toBeVisible()});

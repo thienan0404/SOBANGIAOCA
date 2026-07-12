@@ -1,0 +1,2 @@
+﻿import {Worker} from 'bullmq';import pino from 'pino';
+const logger=pino();const redisUrl=process.env.REDIS_URL;if(!redisUrl)throw new Error('REDIS_URL is required');const connection={url:redisUrl};const queues=['report','notification','reminder','image','integration','analytics'];const workers=queues.map(name=>new Worker(name,async job=>{logger.info({queue:name,jobId:job.id,jobName:job.name},'processing job');return{processed:true}}, {connection}));process.on('SIGTERM',()=>{void Promise.all(workers.map(w=>w.close()))});

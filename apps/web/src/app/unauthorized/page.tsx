@@ -1,0 +1,1 @@
+export default function Unauthorized(){return <main className="setup-screen"><div className="setup-card"><h1>Không có quyền truy cập</h1><p>Tài khoản của bạn chưa được phân quyền cho chức năng này.</p><a href="/dashboard">Về tổng quan</a></div></main>}

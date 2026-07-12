@@ -1,0 +1,46 @@
+{
+    "name":  "@a25/api",
+    "version":  "1.0.0",
+    "private":  true,
+    "scripts":  {
+                    "dev":  "nest start --watch",
+                    "build":  "nest build",
+                    "start:prod":  "node dist/main.js",
+                    "lint":  "tsc --noEmit",
+                    "typecheck":  "tsc --noEmit",
+                    "test":  "jest --runInBand",
+                    "test:integration":  "jest --config test/jest-integration.json",
+                    "db:generate":  "prisma generate",
+                    "db:seed":  "tsx prisma/seed.ts"
+                },
+    "dependencies":  {
+                         "@a25/contracts":  "file:../../packages/contracts",
+                         "@a25/validation":  "file:../../packages/validation",
+                         "@nestjs/common":  "^11.1.6",
+                         "@nestjs/config":  "^4.0.2",
+                         "@nestjs/core":  "^11.1.6",
+                         "@nestjs/platform-express":  "^11.1.6",
+                         "@nestjs/swagger":  "^11.2.0",
+                         "@prisma/client":  "^6.15.0",
+                         "jose":  "^6.1.0",
+                         "nestjs-pino":  "^4.4.1",
+                         "pino-http":  "^10.5.0",
+                         "reflect-metadata":  "^0.2.2",
+                         "rxjs":  "^7.8.2",
+                         "zod":  "^4.1.5"
+                     },
+    "devDependencies":  {
+                            "@nestjs/cli":  "^11.0.10",
+                            "@nestjs/testing":  "^11.1.6",
+                            "@types/express":  "^5.0.3",
+                            "@types/jest":  "^30.0.0",
+                            "@types/node":  "^22.19.19",
+                            "eslint":  "^9.39.4",
+                            "jest":  "^30.1.3",
+                            "prisma":  "^6.15.0",
+                            "supertest":  "^7.1.4",
+                            "ts-jest":  "^29.4.1",
+                            "tsx":  "^4.20.5",
+                            "typescript":  "^5.9.3"
+                        }
+}

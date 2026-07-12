@@ -1,0 +1,2 @@
+﻿import {describe,expect,it} from 'vitest';import {createHandoverSchema} from '@a25/validation';
+describe('biểu mẫu bàn giao',()=>{it('chấp nhận phiếu hợp lệ',()=>{const result=createHandoverSchema.safeParse({branchId:'00000000-0000-4000-8000-000000000101',shiftInstanceId:'00000000-0000-4000-8000-000000000201',receiverId:'00000000-0000-4000-8000-000000000301',items:[{title:'Bàn giao phòng 512',details:'Khách cần xe sân bay',category:'GUEST',priority:'HIGH'}]});expect(result.success).toBe(true)})});

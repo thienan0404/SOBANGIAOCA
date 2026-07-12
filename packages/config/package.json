@@ -1,0 +1,1 @@
+{"name":"@a25/config","version":"1.0.0","private":true,"scripts":{"build":"echo config","lint":"echo config","typecheck":"echo config","test":"echo config"}}

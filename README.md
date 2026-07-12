@@ -1,52 +1,45 @@
-# A25 Hotel — Sổ bàn giao ca lễ tân
+# A25 Electronic Handover
 
-Hệ thống bàn giao ca tối ưu cho điện thoại, chạy bằng Next.js trên Render và dùng Supabase cho PostgreSQL, Auth, RLS và Realtime.
+Production-oriented monorepo for **Sổ bàn giao ca lễ tân điện tử**.
 
-## Chức năng
+## Architecture
 
-- Đăng ký, đăng nhập và duy trì phiên nhân viên.
-- Tự động tạo ca sáng, chiều hoặc đêm theo giờ Việt Nam.
-- Thêm công việc bàn giao theo phòng, nhóm việc, mức độ và hạn xử lý.
-- Quy trình trạng thái: chờ xử lý → đang xử lý → chờ xác nhận → hoàn tất.
-- Xác nhận nhận ca và lưu người nhận.
-- Đồng bộ thay đổi thời gian thực giữa nhiều thiết bị.
-- Tách dữ liệu theo khách sạn bằng Supabase Row Level Security.
-- Nhật ký kiểm toán cho mọi thay đổi trên nội dung bàn giao.
+- `apps/web`: Next.js App Router PWA, Supabase SSR Auth, TanStack Query.
+- `apps/api`: NestJS REST API `/api/v1`, Prisma, Supabase JWT, branch RBAC.
+- `apps/worker`: BullMQ worker and scheduler.
+- `packages/*`: contracts, validation, UI, shared utilities and config.
+- `supabase/migrations`: authoritative PostgreSQL schema and RLS.
 
-## Chạy ở máy cá nhân
+## Requirements
 
-Yêu cầu Node.js 22 trở lên.
+Node 22.14+, pnpm 11.11+, Docker, Supabase CLI.
+
+## Local setup
 
 ```bash
-npm install
-copy .env.example .env.local
-npm run dev
+corepack enable
+pnpm install
+copy apps\web\.env.example apps\web\.env.local
+copy apps\api\.env.example apps\api\.env
+copy apps\worker\.env.example apps\worker\.env
+pnpm supabase:start
+pnpm supabase:reset
+pnpm db:generate
+pnpm dev
 ```
 
-Điền `NEXT_PUBLIC_SUPABASE_URL` và `NEXT_PUBLIC_SUPABASE_ANON_KEY` trong `.env.local`.
+Create development Auth users through Supabase Auth Admin/UI. Do not seed passwords. Link their UUIDs to `profiles` and `branch_memberships`.
 
-## Khởi tạo Supabase
+## Commands
 
-1. Tạo một project Supabase.
-2. Mở SQL Editor.
-3. Chạy toàn bộ file `supabase/migrations/20260711000000_init_handover_system.sql`.
-4. Trong Authentication → URL Configuration, thêm URL Render vào Site URL và Redirect URLs.
-5. Lấy Project URL và anon/publishable key trong Project Settings → API.
+`pnpm dev`, `pnpm dev:web`, `pnpm dev:api`, `pnpm dev:worker`, `pnpm build`, `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e`, `pnpm db:generate`, `pnpm db:migrate`, `pnpm db:seed`.
 
-Migration tạo sẵn khách sạn `A25 Hotel`, các bảng nghiệp vụ, chỉ mục, trigger hồ sơ, audit log, Realtime và toàn bộ chính sách RLS.
+## Database
 
-## Triển khai Render
+SQL migrations are authoritative. Never use Prisma schema push in production. Use `pnpm db:migrate` for hosted Supabase and `pnpm supabase:reset` locally.
 
-Repository đã có `render.yaml`.
+## Render
 
-1. Trên Render chọn **New → Blueprint** và kết nối repository này.
-2. Nhập hai biến được yêu cầu:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-3. Tạo service và chờ build hoàn tất.
+Create a Blueprint from `infrastructure/render/render.yaml`. Build from repository root; do not set `apps/web` or `apps/api` as Root Directory because workspace packages are shared.
 
-Render dùng `npm ci && npm run build` và `npm start`. Mỗi lần đẩy lên nhánh `main`, service sẽ tự triển khai lại.
-
-## Phân quyền
-
-Tài khoản mới mặc định có vai trò `receptionist` và thuộc khách sạn đầu tiên. Có thể đổi `role` trong bảng `profiles` thành `manager` hoặc `admin`. RLS đảm bảo nhân viên chỉ đọc và cập nhật dữ liệu thuộc khách sạn của họ.
+See `docs/render-deployment.md` for required environment variables and deployment order.

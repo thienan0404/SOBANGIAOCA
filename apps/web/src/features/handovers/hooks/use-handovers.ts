@@ -1,0 +1,3 @@
+'use client';import {useMutation,useQuery,useQueryClient} from '@tanstack/react-query';import {handoverApi} from '../api/handovers';
+export const handoverKeys={all:['handovers'] as const,detail:(id:string)=>['handovers',id] as const,participants:['handover-participants'] as const};
+export function useHandovers(){return useQuery({queryKey:handoverKeys.all,queryFn:()=>handoverApi.list()})}export function useHandover(id:string){return useQuery({queryKey:handoverKeys.detail(id),queryFn:()=>handoverApi.get(id)})}export function useCreateHandover(){const q=useQueryClient();return useMutation({mutationFn:handoverApi.create,onSuccess:()=>q.invalidateQueries({queryKey:handoverKeys.all})})}

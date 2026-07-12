@@ -1,0 +1,2 @@
+import {HandoverStatus} from '@prisma/client';import {canTransition} from '../src/modules/handovers/domain/policies/handover-state.policy';
+describe('handover state machine',()=>{it('allows draft submission',()=>expect(canTransition(HandoverStatus.DRAFT,HandoverStatus.SUBMITTED)).toBe(true));it('keeps completed immutable',()=>expect(canTransition(HandoverStatus.COMPLETED,HandoverStatus.DRAFT)).toBe(false));});
