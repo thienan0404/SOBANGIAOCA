@@ -7,11 +7,11 @@ export function AppShell({children}:{children:React.ReactNode}) {
         <span className="avatar" aria-hidden="true">A25</span>
         <div className="hotel">
           <span>A25 Hotel</span>
-          <small>Sổ bàn giao ca lễ tân</small>
+          <small>Quản lý bàn giao ca</small>
         </div>
-        <span className="live-status"><i/> Trực tuyến</span>
+        <span className="live-status" aria-label="Hệ thống đang trực tuyến"><i/> Trực tuyến</span>
         <form action="/auth/signout" method="post">
-          <button className="header-action" aria-label="Đăng xuất" title="Đăng xuất">↗</button>
+          <button className="logout-button" aria-label="Đăng xuất khỏi hệ thống" title="Đăng xuất"><span>Đăng xuất</span><b aria-hidden="true">↗</b></button>
         </form>
       </div>
     </header>
