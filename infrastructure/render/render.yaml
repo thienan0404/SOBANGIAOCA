@@ -77,4 +77,5 @@ services:
   - type: keyvalue
     name: a25-handover-redis
     plan: free
+    maxmemoryPolicy: noeviction
     ipAllowList: []
