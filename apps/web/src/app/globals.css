@@ -29,3 +29,8 @@
 .bottom-nav a{flex:1;min-width:0;min-height:58px;gap:4px;padding:3px 2px;border-radius:14px;justify-content:center;color:#847f7d;font-family:var(--font-geist),Arial,sans-serif;transition:color .18s,background .18s}.bottom-nav a:before,.bottom-nav a:after{content:none!important}.bottom-nav .nav-icon{display:grid;place-items:center;width:34px;height:29px;border-radius:10px;font-size:18px;line-height:1;color:#777270;transition:background .18s,color .18s,transform .18s}.bottom-nav a small{font-size:9px;line-height:1.2;font-weight:600;white-space:nowrap}.bottom-nav a.active{color:#7b1620;background:transparent}.bottom-nav a.active .nav-icon{background:#f5e5e7;color:#7b1620;transform:translateY(-1px)}.bottom-nav a.active small{font-weight:800}.bottom-nav a:hover .nav-icon{background:#f5f1ef}.bottom-nav a.active:hover .nav-icon{background:#f5e5e7}
 .bottom-nav a:focus-visible,.logout-button:focus-visible{outline:2px solid #bf5c65;outline-offset:2px}
 @media(max-width:390px){.logout-button{padding:0;width:36px}.logout-button span{display:none}.live-status{display:none}.bottom-nav a small{font-size:8px}.bottom-nav .nav-icon{width:32px}}
+
+
+/* A25 brand mark */
+.avatar{overflow:hidden;background:#fff;padding:5px}
+.avatar img{display:block;width:100%;height:100%;object-fit:contain}

@@ -4,7 +4,9 @@ export function AppShell({children}:{children:React.ReactNode}) {
   return <main className="app-shell">
     <header className="topbar">
       <div className="topline">
-        <span className="avatar" aria-hidden="true">A25</span>
+        <span className="avatar" aria-hidden="true">
+          <img src="/a25-logo.png" alt="" />
+        </span>
         <div className="hotel">
           <span>A25 Hotel</span>
           <small>Quản lý bàn giao ca</small>
