@@ -3,7 +3,7 @@ services:
     name: a25-handover-web
     runtime: node
     plan: free
-    buildCommand: corepack enable && pnpm install --frozen-lockfile --ignore-scripts && pnpm --filter @a25/web build
+    buildCommand: pnpm install --frozen-lockfile --ignore-scripts && pnpm --filter @a25/web build
     startCommand: pnpm --filter @a25/web start
     healthCheckPath: /
     envVars:
@@ -21,7 +21,7 @@ services:
     name: a25-handover-api
     runtime: node
     plan: free
-    buildCommand: corepack enable && pnpm install --frozen-lockfile --ignore-scripts && pnpm --filter @a25/api db:generate && pnpm --filter @a25/api build
+    buildCommand: pnpm install --frozen-lockfile --ignore-scripts && pnpm --filter @a25/api db:generate && pnpm --filter @a25/api build
     startCommand: pnpm --filter @a25/api start:prod
     healthCheckPath: /api/v1/health
     envVars:
@@ -48,7 +48,7 @@ services:
     name: a25-handover-worker
     runtime: node
     plan: starter
-    buildCommand: corepack enable && pnpm install --frozen-lockfile --ignore-scripts && pnpm --filter @a25/worker build
+    buildCommand: pnpm install --frozen-lockfile --ignore-scripts && pnpm --filter @a25/worker build
     startCommand: pnpm --filter @a25/worker start:prod
     envVars:
       - key: REDIS_URL
@@ -66,7 +66,7 @@ services:
     name: a25-handover-scheduler
     runtime: node
     schedule: "*/10 * * * *"
-    buildCommand: corepack enable && pnpm install --frozen-lockfile --ignore-scripts && pnpm --filter @a25/worker build
+    buildCommand: pnpm install --frozen-lockfile --ignore-scripts && pnpm --filter @a25/worker build
     startCommand: pnpm --filter @a25/worker start:scheduler
     envVars:
       - key: REDIS_URL
