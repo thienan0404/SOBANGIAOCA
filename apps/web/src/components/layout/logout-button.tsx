@@ -13,10 +13,10 @@ export function LogoutButton(){
     try {
       const {error}=await createClient().auth.signOut();
       if(error) throw error;
-    } catch {
-      await fetch('/auth/signout',{method:'POST'}).catch(()=>undefined);
-    } finally {
       window.location.replace('/login');
+    } catch {
+      setPending(false);
+      alert('Chưa thể đăng xuất. Vui lòng thử lại.');
     }
   }
 

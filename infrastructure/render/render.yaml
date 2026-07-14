@@ -18,6 +18,20 @@ services:
       - key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
         sync: false
   - type: web
+    name: a25-handover-static
+    runtime: static
+    buildCommand: pnpm install --frozen-lockfile --ignore-scripts && pnpm --filter @a25/web build
+    staticPublishPath: ./apps/web/out
+    envVars:
+      - key: NEXT_PUBLIC_APP_URL
+        value: https://a25-handover-static.onrender.com
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+        sync: false
+  - type: web
     name: a25-handover-api
     runtime: node
     plan: free
@@ -38,7 +52,7 @@ services:
       - key: SUPABASE_JWT_ISSUER
         sync: false
       - key: WEB_URL
-        sync: false
+        value: https://a25-handover-web.onrender.com,https://a25-handover-static.onrender.com
       - key: REDIS_URL
         fromService:
           name: a25-handover-redis

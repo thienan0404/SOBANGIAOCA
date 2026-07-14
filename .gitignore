@@ -45,6 +45,7 @@ next-env.d.ts
 # monorepo generated files
 **/node_modules/
 **/.next/
+**/out/
 **/dist/
 .turbo/
 .pnpm-store/

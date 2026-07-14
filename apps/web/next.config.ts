@@ -1,3 +1,12 @@
-﻿import path from 'node:path';import type {NextConfig} from 'next';
-const nextConfig:NextConfig={turbopack:{root:path.resolve(process.cwd(),'../..')},experimental:{externalDir:true}};
+import path from 'node:path';
+import type {NextConfig} from 'next';
+
+const nextConfig:NextConfig={
+  output:'export',
+  trailingSlash:true,
+  images:{unoptimized:true},
+  turbopack:{root:path.resolve(process.cwd(),'../..')},
+  experimental:{externalDir:true},
+};
+
 export default nextConfig;
