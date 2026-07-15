@@ -28,10 +28,30 @@ type DetectorConstructor=new(options:{formats:string[]})=>Detector;
 function formatShift(value:string){
   return new Intl.DateTimeFormat('vi-VN',{hour:'2-digit',minute:'2-digit'}).format(new Date(value));
 }
+function assignmentLabel(value:string){
+  return({RECEPTIONIST:'Lễ tân',SHIFT_LEADER:'Trưởng ca',SUPERVISOR:'Giám sát'} as Record<string,string>)[value]
+    ??value;
+}
+
+const rpcMessages:Record<string,string>={
+  'Phien dang nhap chi nhanh khong hop le':'Phiên đăng nhập chi nhánh không hợp lệ',
+  'PIN phai gom dung 6 chu so':'PIN phải gồm đúng 6 chữ số',
+  'Tai khoan phai duoc gan voi dung mot chi nhanh':'Tài khoản phải được gán với đúng một chi nhánh',
+  'Ma nhan vien hoac PIN chua chinh xac':'Mã nhân viên hoặc PIN chưa chính xác',
+  'PIN moi phai gom dung 6 chu so':'PIN mới phải gồm đúng 6 chữ số',
+  'PIN moi khong duoc trung PIN mac dinh':'PIN mới không được trùng với PIN mặc định',
+  'PIN moi phai khac PIN hien tai':'PIN mới phải khác PIN hiện tại',
+  'Ban phai doi PIN mac dinh truoc khi xac nhan ca':'Bạn phải đổi PIN mặc định trước khi xác nhận ca',
+  'Nhan vien dang co mot phien lam viec khac':'Nhân viên đang có một phiên làm việc khác',
+  'Khong tim thay lich phan ca phu hop voi gio thuc te':'Không tìm thấy lịch phân ca phù hợp với giờ thực tế'
+};
 
 async function rpcData<T>(name:string,args?:Record<string,unknown>):Promise<T>{
   const{data,error}=await createClient().rpc(name,args);
-  if(error)throw new Error(error.message);
+  if(error){
+    const translated=Object.entries(rpcMessages).find(([source])=>error.message.includes(source))?.[1];
+    throw new Error(translated??error.message);
+  }
   return data as T;
 }
 
@@ -49,6 +69,9 @@ export function LoginForm(){
   const[loading,setLoading]=useState(false);
   const[scanning,setScanning]=useState(false);
   const videoRef=useRef<HTMLVideoElement>(null);
+  const progressSteps:Step[]=(step==='change-pin'||employeeContext?.employee.mustChangePin)
+    ?['account','identity','pin','change-pin','shift']
+    :['account','identity','pin','shift'];
 
   async function loadBranchContext(){
     const context=await rpcData<BranchContext>('a25_branch_login_context');
@@ -142,13 +165,13 @@ export function LoginForm(){
   }
 
   async function changeEmployeePin(){
-    if(!/^\d{6}$/.test(newPin)){setError('PIN moi phai gom dung 6 chu so');return}
-    if(newPin==='888888'){setError('PIN moi khong duoc trung PIN mac dinh 888888');return}
-    if(newPin!==confirmPin){setError('Hai lan nhap PIN moi chua khop nhau');return}
+    if(!/^\d{6}$/.test(newPin)){setError('PIN mới phải gồm đúng 6 chữ số');return}
+    if(newPin==='888888'){setError('PIN mới không được trùng với PIN mặc định 888888');return}
+    if(newPin!==confirmPin){setError('Hai lần nhập PIN mới chưa trùng khớp');return}
     setLoading(true);setError('');
     try{
       const{data}=await createClient().auth.getSession();
-      if(!data.session)throw new Error('Phien tai khoan chi nhanh da het han');
+      if(!data.session)throw new Error('Phiên tài khoản chi nhánh đã hết hạn');
       await rpcData<boolean>('a25_change_employee_pin',{
         p_identifier:identifier,
         p_current_pin:pin,
@@ -161,7 +184,7 @@ export function LoginForm(){
       }:context);
       setNewPin('');setConfirmPin('');setStep('shift');
     }catch(cause){
-      setError(cause instanceof Error?cause.message:'Khong the doi PIN');
+      setError(cause instanceof Error?cause.message:'Không thể đổi PIN');
     }finally{setLoading(false)}
   }
 
@@ -194,7 +217,7 @@ export function LoginForm(){
 
   return <section className="auth-card employee-login">
     <div className="login-progress" aria-label="Tiến trình đăng nhập">
-      {['account','identity','pin','shift'].map((item,index)=><i key={item} className={item===step?'active':''}>{index+1}</i>)}
+      {progressSteps.map((item,index)=><i key={item} className={item===step?'active':''}>{index+1}</i>)}
     </div>
 
     {step==='account'&&<>
@@ -226,20 +249,20 @@ export function LoginForm(){
 
     {step==='change-pin'&&employeeContext&&<>
       <div className="auth-card-header">
-        <span>{'\u0042\u01af\u1eda\u0043\u0020\u0034\u0020\u00b7\u0020\u0042\u1ea2\u004f\u0020\u004d\u1eac\u0054'}</span>
-        <h2>{'\u0110\u1ed5\u0069\u0020\u0050\u0049\u004e\u0020\u006c\u1ea7\u006e\u0020\u0111\u1ea7\u0075'}</h2>
-        <p>{'\u0050\u0049\u004e\u0020\u006d\u1eb7\u0063\u0020\u0111\u1ecb\u006e\u0068\u0020\u0038\u0038\u0038\u0038\u0038\u0038\u0020\u0063\u0068\u1ec9\u0020\u0064\u00f9\u006e\u0067\u0020\u0111\u1ec3\u0020\u006b\u0068\u1edf\u0069\u0020\u0074\u1ea1\u006f\u002e\u0020\u0048\u00e3\u0079\u0020\u0111\u1ed5\u0069\u0020\u0050\u0049\u004e\u0020\u0074\u0072\u01b0\u1edb\u0063\u0020\u006b\u0068\u0069\u0020\u0076\u00e0\u006f\u0020\u0063\u0061\u002e'}</p>
+        <span>BƯỚC 4 · BẢO MẬT</span>
+        <h2>Đổi PIN trong lần đăng nhập đầu tiên</h2>
+        <p>PIN mặc định 888888 chỉ dùng để khởi tạo. Hãy đổi PIN trước khi xác nhận ca làm việc.</p>
       </div>
-      <label>{'\u0050\u0049\u004e\u0020\u006d\u1edb\u0069\u0020\u0036\u0020\u0073\u1ed1'}<input className="pin-input" value={newPin} onChange={event=>setNewPin(event.target.value.replace(/\D/g,'').slice(0,6))} type="password" inputMode="numeric" placeholder="\u2022\u2022\u2022\u2022\u2022\u2022" autoFocus/></label>
-      <label>{'\u004e\u0068\u1ead\u0070\u0020\u006c\u1ea1\u0069\u0020\u0050\u0049\u004e\u0020\u006d\u1edb\u0069'}<input className="pin-input" value={confirmPin} onChange={event=>setConfirmPin(event.target.value.replace(/\D/g,'').slice(0,6))} type="password" inputMode="numeric" placeholder="\u2022\u2022\u2022\u2022\u2022\u2022"/></label>
-      <button type="button" className="login-button" disabled={loading||newPin.length!==6||confirmPin.length!==6} onClick={()=>void changeEmployeePin()}>{loading?'\u0110\u0061\u006e\u0067\u0020\u0111\u1ed5\u0069\u0020\u0050\u0049\u004e\u002e\u002e\u002e':'\u0110\u1ed5\u0069\u0020\u0050\u0049\u004e\u0020\u0076\u00e0\u0020\u0074\u0069\u1ebf\u0070\u0020\u0074\u1ee5\u0063'}</button>
+      <label>PIN mới gồm 6 số<input className="pin-input" value={newPin} onChange={event=>setNewPin(event.target.value.replace(/\D/g,'').slice(0,6))} type="password" inputMode="numeric" placeholder="••••••" autoFocus/></label>
+      <label>Nhập lại PIN mới<input className="pin-input" value={confirmPin} onChange={event=>setConfirmPin(event.target.value.replace(/\D/g,'').slice(0,6))} type="password" inputMode="numeric" placeholder="••••••"/></label>
+      <button type="button" className="login-button" disabled={loading||newPin.length!==6||confirmPin.length!==6} onClick={()=>void changeEmployeePin()}>{loading?'Đang đổi PIN...':'Đổi PIN và tiếp tục'}</button>
     </>}
 
     {step==='shift'&&employeeContext&&<>
       <button type="button" className="login-back" onClick={()=>{setPin('');setStep('identity')}}>← Đổi nhân viên</button>
       <div className="auth-card-header"><span>BƯỚC 4 · CA LÀM VIỆC</span><h2>Xin chào, {employeeContext.employee.fullName}</h2><p>Lịch phân ca đã được đối chiếu với giờ thực tế tại {employeeContext.branch.name}.</p></div>
       <div className="shift-options">
-        {employeeContext.assignments.map(item=><article key={item.id}><div><span>{item.shift.shiftCode}</span><strong>{formatShift(item.shift.startsAt)} – {formatShift(item.shift.endsAt)}</strong><small>{item.assignmentType}</small></div><button type="button" disabled={loading} onClick={()=>void confirmShift(item)}>{loading?'Đang tạo phiên...':'Xác nhận ca'}</button></article>)}
+        {employeeContext.assignments.map(item=><article key={item.id}><div><span>{item.shift.shiftCode}</span><strong>{formatShift(item.shift.startsAt)} – {formatShift(item.shift.endsAt)}</strong><small>{assignmentLabel(item.assignmentType)}</small></div><button type="button" disabled={loading} onClick={()=>void confirmShift(item)}>{loading?'Đang tạo phiên...':'Xác nhận ca'}</button></article>)}
       </div>
       {!employeeContext.assignments.length&&<div className="login-notice"><strong>Chưa có ca phù hợp</strong><span>Không tìm thấy lịch đang diễn ra hoặc bắt đầu trong vòng 60 phút tới.</span></div>}
     </>}

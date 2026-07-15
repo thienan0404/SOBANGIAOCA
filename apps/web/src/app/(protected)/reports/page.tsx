@@ -1,1 +1,1 @@
-﻿import {ModulePage} from '@/components/common/module-page';export default function Page(){return <ModulePage title="Báo cáo xuất file" description="Tạo Excel/PDF bất đồng bộ"/>}
+import {ModulePage} from '@/components/common/module-page';export default function Page(){return <ModulePage title="Báo cáo và xuất dữ liệu" description="Tạo báo cáo Excel hoặc PDF"/>}

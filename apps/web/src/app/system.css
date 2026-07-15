@@ -1,4 +1,4 @@
-.auth-screen,.setup-screen,.loading-screen{min-height:100svh;background:#f6f3f0;font-family:var(--font-geist),Arial,sans-serif}
+.auth-screen,.setup-screen,.loading-screen{min-height:100svh;background:#f6f3f0;font-family:var(--font-ui)}
 .auth-screen{position:relative;padding-bottom:40px}
 .auth-hero{min-height:410px;padding:28px 26px 80px;color:#fff;display:flex;flex-direction:column;background:radial-gradient(circle at 90% 8%,rgba(201,79,89,.5),transparent 34%),linear-gradient(145deg,#5e0d15,#8d1d28 70%,#74141e);border-radius:0 0 34px 34px;box-shadow:0 16px 38px rgba(91,13,21,.2)}
 .auth-brand{display:flex;align-items:center;gap:12px}.brand-mark{display:grid;place-items:center;width:48px;height:48px;border-radius:15px;background:#fff;color:#7b1620;font-size:16px;font-weight:900;letter-spacing:-.7px;box-shadow:0 8px 22px rgba(48,4,9,.25)}.auth-brand>div{display:flex;flex-direction:column}.auth-brand strong{font-size:12px;letter-spacing:.8px}.auth-brand small{font-size:8px;letter-spacing:1.5px;color:#e8c7ca;margin-top:3px}
