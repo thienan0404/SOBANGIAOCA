@@ -11,8 +11,17 @@ export function LogoutButton(){
     setPending(true);
 
     try {
-      const {error}=await createClient().auth.signOut();
+      const supabase=createClient();
+      const{data}=await supabase.auth.getSession();
+      if(data.session)void fetch(process.env.NEXT_PUBLIC_API_URL!+'/auth/work-sessions/end',{
+        method:'POST',headers:{authorization:`Bearer ${data.session.access_token}`},keepalive:true
+      }).catch(()=>undefined);
+      const{error}=await supabase.auth.signOut();
       if(error) throw error;
+      localStorage.removeItem('a25.workSessionId');
+      localStorage.removeItem('a25.branchId');
+      localStorage.removeItem('a25.employeeName');
+      localStorage.removeItem('a25.employeeCode');
       window.location.replace('/login');
     } catch {
       setPending(false);

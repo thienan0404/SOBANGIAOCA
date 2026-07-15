@@ -44,10 +44,12 @@ id String @id @default(uuid()) @db.Uuid
 organizationId String @map("organization_id") @db.Uuid
 name String
 code String
+address String?
 organization Organization @relation(fields:[organizationId],references:[id])
 memberships BranchMembership[]
 handovers Handover[]
 shifts ShiftInstance[]
+workSessions WorkSession[]
 @@unique([organizationId,code])
 @@map("branches")
 }
@@ -56,8 +58,13 @@ id String @id @db.Uuid
 organizationId String @map("organization_id") @db.Uuid
 fullName String @map("full_name")
 email String
+employeeCode String? @unique @map("employee_code")
+pinHash String? @map("pin_hash")
 isActive Boolean @default(true) @map("is_active")
 memberships BranchMembership[]
+shiftAssignments ShiftAssignment[]
+workSessions WorkSession[] @relation("EmployeeWorkSessions")
+authenticatedWorkSessions WorkSession[] @relation("BranchAccountWorkSessions")
 createdHandovers Handover[] @relation("HandoverCreator")
 participants HandoverParticipant[]
 @@map("profiles")
@@ -90,9 +97,43 @@ startsAt DateTime @map("starts_at") @db.Timestamptz
 endsAt DateTime @map("ends_at") @db.Timestamptz
 branch Branch @relation(fields:[branchId],references:[id])
 handovers Handover[]
+assignments ShiftAssignment[]
+workSessions WorkSession[]
 @@index([branchId,startsAt])
 @@map("shift_instances")
 }
+model ShiftAssignment {
+id String @id @default(uuid()) @db.Uuid
+shiftInstanceId String @map("shift_instance_id") @db.Uuid
+profileId String @map("profile_id") @db.Uuid
+assignmentType String @map("assignment_type")
+shift ShiftInstance @relation(fields:[shiftInstanceId],references:[id])
+profile Profile @relation(fields:[profileId],references:[id])
+@@unique([shiftInstanceId,profileId])
+@@map("shift_assignments")
+}
+model WorkSession {
+id String @id @default(uuid()) @db.Uuid
+organizationId String @map("organization_id") @db.Uuid
+profileId String @map("profile_id") @db.Uuid
+authenticatedBy String @map("authenticated_by") @db.Uuid
+branchId String @map("branch_id") @db.Uuid
+shiftInstanceId String @map("shift_instance_id") @db.Uuid
+status String @default("ACTIVE")
+scheduleMatch String @map("schedule_match")
+scheduledStart DateTime @map("scheduled_start") @db.Timestamptz
+actualStart DateTime @default(now()) @map("actual_start") @db.Timestamptz
+endedAt DateTime? @map("ended_at") @db.Timestamptz
+createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+profile Profile @relation("EmployeeWorkSessions",fields:[profileId],references:[id])
+authenticator Profile @relation("BranchAccountWorkSessions",fields:[authenticatedBy],references:[id])
+branch Branch @relation(fields:[branchId],references:[id])
+shift ShiftInstance @relation(fields:[shiftInstanceId],references:[id])
+@@index([profileId,actualStart])
+@@index([branchId,status,actualStart])
+@@map("work_sessions")
+}
+
 model Handover {
 id String @id @default(uuid()) @db.Uuid
 organizationId String @map("organization_id") @db.Uuid

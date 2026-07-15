@@ -15,13 +15,16 @@ export default function ProtectedLayout({children}:{children:React.ReactNode}){
 
     void supabase.auth.getSession().then(({data})=>{
       if(!active) return;
-      if(data.session) setReady(true);
+      if(data.session&&localStorage.getItem('a25.workSessionId')) setReady(true);
+      else if(data.session){
+        window.location.replace('/login');
+      }
       else window.location.replace(`/login?next=${encodeURIComponent(pathname)}`);
     });
 
     const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,session)=>{
       if(!active) return;
-      if(session) setReady(true);
+      if(session&&localStorage.getItem('a25.workSessionId')) setReady(true);
       else window.location.replace('/login');
     });
 

@@ -41,3 +41,5 @@
 html,body{font-family:var(--font-ui)}
 body :where(button,input,textarea,select,option,a){font-family:inherit}
 body :where(input,textarea)::placeholder{font-family:inherit}
+
+:root{--font-geist:"Segoe UI"}

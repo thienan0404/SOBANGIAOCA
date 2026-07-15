@@ -1,2 +1,3 @@
 import {Module} from '@nestjs/common';import {ConfigModule} from '@nestjs/config';import {LoggerModule} from 'nestjs-pino';import {HealthModule} from './health/health.module';import {PrismaModule} from './infrastructure/database/prisma/prisma.module';import {HandoversModule} from './modules/handovers/handovers.module';import {CatalogModule} from './modules/catalog/catalog.module';
-@Module({imports:[ConfigModule.forRoot({isGlobal:true}),LoggerModule.forRoot({pinoHttp:{level:process.env.LOG_LEVEL??'info',redact:['req.headers.authorization']}}),PrismaModule,HealthModule,HandoversModule,CatalogModule]})export class AppModule{}
+import {EmployeeAuthModule} from './modules/employee-auth/employee-auth.module';
+@Module({imports:[ConfigModule.forRoot({isGlobal:true}),LoggerModule.forRoot({pinoHttp:{level:process.env.LOG_LEVEL??'info',redact:['req.headers.authorization']}}),PrismaModule,HealthModule,EmployeeAuthModule,HandoversModule,CatalogModule]})export class AppModule{}

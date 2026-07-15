@@ -1,37 +1,218 @@
 'use client';
 
-import {zodResolver} from '@hookform/resolvers/zod';
-import {useForm} from 'react-hook-form';
-import {z} from 'zod';
+import {useEffect,useRef,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
-import {useEffect,useState} from 'react';
 
-const schema=z.object({email:z.string().email('Email không hợp lệ'),password:z.string().min(6,'Mật khẩu tối thiểu 6 ký tự')});
-type FormData=z.infer<typeof schema>;
+type Step='account'|'identity'|'pin'|'shift';
+type Branch={id:string;name:string;code:string;address:string|null};
+type Assignment={
+  id:string;
+  assignmentType:string;
+  shift:{id:string;shiftCode:string;startsAt:string;endsAt:string;branch:Branch};
+};
+type BranchContext={
+  account:{id:string;fullName:string;email:string};
+  branch:Branch;
+  activeSession:{id:string;branchId:string;profile:{fullName:string;employeeCode:string|null}}|null;
+};
+type EmployeeContext={
+  employee:{id:string;fullName:string;employeeCode:string|null};
+  branch:Branch;
+  assignments:Assignment[];
+};
+type Envelope<T>={data:T;error?:{message?:string}};
+type DetectorResult={rawValue:string};
+type Detector={detect(source:HTMLVideoElement):Promise<DetectorResult[]>};
+type DetectorConstructor=new(options:{formats:string[]})=>Detector;
+
+const apiBase=process.env.NEXT_PUBLIC_API_URL!;
+
+async function responseData<T>(response:Response):Promise<T>{
+  const payload=await response.json() as Envelope<T>;
+  if(!response.ok)throw new Error(payload.error?.message??'Không thể kết nối hệ thống');
+  return payload.data;
+}
+function formatShift(value:string){
+  return new Intl.DateTimeFormat('vi-VN',{hour:'2-digit',minute:'2-digit'}).format(new Date(value));
+}
 
 export function LoginForm(){
-  const [error,setError]=useState('');
-  useEffect(()=>{
-    const api=process.env.NEXT_PUBLIC_API_URL;
-    if(api) void fetch(api+'/health',{cache:'no-store'}).catch(()=>undefined);
-  },[]);
-  const {register,handleSubmit,formState:{errors,isSubmitting}}=useForm<FormData>({resolver:zodResolver(schema)});
-  async function submit(values:FormData){
-    setError('');
-    const {error}=await createClient().auth.signInWithPassword(values);
-    if(error){setError(error.code==='invalid_credentials'?'Email hoặc mật khẩu chưa chính xác.':`Không thể đăng nhập (${error.code??'AUTH_ERROR'}).`);return}
-    const requested=new URLSearchParams(window.location.search).get('next');
-    const safeNext=requested?.startsWith('/')&&!requested.startsWith('//')?requested:'/dashboard';
-    window.location.replace(safeNext);
+  const[step,setStep]=useState<Step>('account');
+  const[email,setEmail]=useState('');
+  const[password,setPassword]=useState('');
+  const[identifier,setIdentifier]=useState('');
+  const[pin,setPin]=useState('');
+  const[branchContext,setBranchContext]=useState<BranchContext|null>(null);
+  const[employeeContext,setEmployeeContext]=useState<EmployeeContext|null>(null);
+  const[error,setError]=useState('');
+  const[loading,setLoading]=useState(false);
+  const[scanning,setScanning]=useState(false);
+  const videoRef=useRef<HTMLVideoElement>(null);
+
+  async function loadBranchContext(accessToken:string){
+    const response=await fetch(apiBase+'/auth/branch-context',{headers:{authorization:`Bearer ${accessToken}`}});
+    const context=await responseData<BranchContext>(response);
+    setBranchContext(context);
+    if(context.activeSession){
+      localStorage.setItem('a25.workSessionId',context.activeSession.id);
+      localStorage.setItem('a25.branchId',context.activeSession.branchId);
+      localStorage.setItem('a25.employeeName',context.activeSession.profile.fullName);
+      localStorage.setItem('a25.employeeCode',context.activeSession.profile.employeeCode??'');
+      window.location.replace('/dashboard');
+      return;
+    }
+    setStep('identity');
   }
-  return <form className="auth-card" onSubmit={handleSubmit(submit)}>
-    <div className="auth-card-header"><span>ĐĂNG NHẬP NHÂN VIÊN</span><h2>Chào mừng trở lại</h2><p>Sử dụng tài khoản A25 để tiếp tục.</p></div>
-    <div className="auth-fields">
-      <label>Email nhân viên<input {...register('email')} type="email" placeholder="tenban@a25hotel.com" autoComplete="email"/>{errors.email&&<small>{errors.email.message}</small>}</label>
-      <label>Mật khẩu<input {...register('password')} type="password" placeholder="Nhập mật khẩu" autoComplete="current-password"/>{errors.password&&<small>{errors.password.message}</small>}</label>
+
+  useEffect(()=>{
+    if(apiBase)void fetch(apiBase+'/health',{cache:'no-store'}).catch(()=>undefined);
+    void createClient().auth.getSession().then(({data})=>{
+      if(data.session)void loadBranchContext(data.session.access_token).catch(()=>undefined);
+    });
+  },[]);
+
+  useEffect(()=>{
+    if(!scanning)return;
+    let stopped=false;
+    let stream:MediaStream|undefined;
+    let frame=0;
+    const stop=()=>{stopped=true;cancelAnimationFrame(frame);stream?.getTracks().forEach(track=>track.stop())};
+    void(async()=>{
+      try{
+        const DetectorClass=(window as unknown as {BarcodeDetector?:DetectorConstructor}).BarcodeDetector;
+        if(!DetectorClass)throw new Error('Trình duyệt chưa hỗ trợ quét QR. Vui lòng nhập mã nhân viên.');
+        stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});
+        if(!videoRef.current)return;
+        videoRef.current.srcObject=stream;
+        await videoRef.current.play();
+        const detector=new DetectorClass({formats:['qr_code']});
+        const scan=async()=>{
+          if(stopped||!videoRef.current)return;
+          const codes=await detector.detect(videoRef.current);
+          if(codes[0]?.rawValue){
+            setIdentifier(codes[0].rawValue);
+            setScanning(false);
+            setStep('pin');
+            stop();
+            return;
+          }
+          frame=requestAnimationFrame(()=>void scan());
+        };
+        await scan();
+      }catch(cause){
+        setError(cause instanceof Error?cause.message:'Không thể mở camera');
+        setScanning(false);
+        stop();
+      }
+    })();
+    return stop;
+  },[scanning]);
+
+  async function loginBranch(){
+    if(!email||!password){setError('Vui lòng nhập tài khoản và mật khẩu chi nhánh');return}
+    setLoading(true);setError('');
+    try{
+      const{data,error:loginError}=await createClient().auth.signInWithPassword({email,password});
+      if(loginError||!data.session)throw new Error('Tài khoản hoặc mật khẩu chi nhánh chưa chính xác');
+      await loadBranchContext(data.session.access_token);
+    }catch(cause){
+      setError(cause instanceof Error?cause.message:'Không thể đăng nhập chi nhánh');
+    }finally{setLoading(false)}
+  }
+
+  function continueIdentity(){
+    if(identifier.trim().length<3){setError('Vui lòng nhập hoặc quét mã nhân viên');return}
+    setError('');setStep('pin');
+  }
+
+  async function verifyEmployee(){
+    if(!/^\d{6}$/.test(pin)){setError('PIN phải gồm đúng 6 chữ số');return}
+    setLoading(true);setError('');
+    try{
+      const{data}=await createClient().auth.getSession();
+      if(!data.session)throw new Error('Phiên tài khoản chi nhánh đã hết hạn');
+      const response=await fetch(apiBase+'/auth/employee/verify',{
+        method:'POST',
+        headers:{'content-type':'application/json',authorization:`Bearer ${data.session.access_token}`},
+        body:JSON.stringify({identifier,pin})
+      });
+      setEmployeeContext(await responseData<EmployeeContext>(response));
+      setStep('shift');
+    }catch(cause){
+      setError(cause instanceof Error?cause.message:'Không thể xác thực nhân viên');
+    }finally{setLoading(false)}
+  }
+
+  async function confirmShift(assignment:Assignment){
+    setLoading(true);setError('');
+    try{
+      const{data}=await createClient().auth.getSession();
+      if(!data.session)throw new Error('Phiên tài khoản chi nhánh đã hết hạn');
+      const response=await fetch(apiBase+'/auth/work-sessions',{
+        method:'POST',
+        headers:{'content-type':'application/json',authorization:`Bearer ${data.session.access_token}`},
+        body:JSON.stringify({identifier,pin,shiftInstanceId:assignment.shift.id})
+      });
+      const session=await responseData<{id:string;branchId:string}>(response);
+      localStorage.setItem('a25.workSessionId',session.id);
+      localStorage.setItem('a25.branchId',session.branchId);
+      localStorage.setItem('a25.employeeName',employeeContext?.employee.fullName??'');
+      localStorage.setItem('a25.employeeCode',employeeContext?.employee.employeeCode??'');
+      window.location.replace('/dashboard');
+    }catch(cause){
+      setError(cause instanceof Error?cause.message:'Không thể tạo phiên làm việc');
+    }finally{setLoading(false)}
+  }
+
+  async function changeBranchAccount(){
+    await createClient().auth.signOut();
+    localStorage.removeItem('a25.workSessionId');
+    localStorage.removeItem('a25.branchId');
+    setBranchContext(null);setEmployeeContext(null);setIdentifier('');setPin('');setStep('account');
+  }
+
+  return <section className="auth-card employee-login">
+    <div className="login-progress" aria-label="Tiến trình đăng nhập">
+      {['account','identity','pin','shift'].map((item,index)=><i key={item} className={item===step?'active':''}>{index+1}</i>)}
     </div>
+
+    {step==='account'&&<>
+      <div className="auth-card-header"><span>BƯỚC 1 · CHI NHÁNH</span><h2>Đăng nhập chi nhánh</h2><p>Dùng tài khoản được cấp riêng cho khách sạn đang vận hành.</p></div>
+      <div className="auth-fields">
+        <label>Tài khoản chi nhánh<input type="email" value={email} onChange={event=>setEmail(event.target.value)} placeholder="chinhanh@a25hotel.com" autoComplete="username"/></label>
+        <label>Mật khẩu<input type="password" value={password} onChange={event=>setPassword(event.target.value)} placeholder="Nhập mật khẩu" autoComplete="current-password"/></label>
+      </div>
+      <button type="button" className="login-button" disabled={loading} onClick={()=>void loginBranch()}>{loading?<><i/>Đang đăng nhập...</>:'Đăng nhập chi nhánh'}</button>
+    </>}
+
+    {step==='identity'&&branchContext&&<>
+      <button type="button" className="login-back" onClick={()=>void changeBranchAccount()}>← Đổi tài khoản chi nhánh</button>
+      <div className="branch-badge"><span>{branchContext.branch.code}</span><div><strong>{branchContext.branch.name}</strong><small>{branchContext.branch.address}</small></div></div>
+      <div className="auth-card-header"><span>BƯỚC 2 · NHÂN VIÊN</span><h2>Mã nhân viên</h2><p>Nhập mã trên thẻ hoặc quét QR thẻ nhân viên.</p></div>
+      <label>Mã nhân viên<input value={identifier} onChange={event=>setIdentifier(event.target.value.toUpperCase())} placeholder="Ví dụ: A250001" autoCapitalize="characters" autoFocus/></label>
+      <div className="identity-actions">
+        <button type="button" className="login-button" onClick={continueIdentity}>Tiếp tục</button>
+        <button type="button" className="qr-button" onClick={()=>{setError('');setScanning(true)}}><span>⌗</span> Quét QR thẻ</button>
+      </div>
+    </>}
+
+    {step==='pin'&&<>
+      <button type="button" className="login-back" onClick={()=>{setPin('');setStep('identity')}}>← Đổi mã nhân viên</button>
+      <div className="auth-card-header"><span>BƯỚC 3 · XÁC THỰC</span><h2>Nhập PIN cá nhân</h2><p>Mã nhân viên: <strong>{identifier.replace(/^A25EMP:/i,'')}</strong></p></div>
+      <label>PIN 6 số<input className="pin-input" value={pin} onChange={event=>setPin(event.target.value.replace(/\D/g,'').slice(0,6))} type="password" inputMode="numeric" placeholder="••••••" autoFocus/></label>
+      <button type="button" className="login-button" disabled={loading||pin.length!==6} onClick={()=>void verifyEmployee()}>{loading?<><i/>Đang xác thực...</>:'Xác thực nhân viên'}</button>
+    </>}
+
+    {step==='shift'&&employeeContext&&<>
+      <button type="button" className="login-back" onClick={()=>{setPin('');setStep('identity')}}>← Đổi nhân viên</button>
+      <div className="auth-card-header"><span>BƯỚC 4 · CA LÀM VIỆC</span><h2>Xin chào, {employeeContext.employee.fullName}</h2><p>Lịch phân ca đã được đối chiếu với giờ thực tế tại {employeeContext.branch.name}.</p></div>
+      <div className="shift-options">
+        {employeeContext.assignments.map(item=><article key={item.id}><div><span>{item.shift.shiftCode}</span><strong>{formatShift(item.shift.startsAt)} – {formatShift(item.shift.endsAt)}</strong><small>{item.assignmentType}</small></div><button type="button" disabled={loading} onClick={()=>void confirmShift(item)}>{loading?'Đang tạo phiên...':'Xác nhận ca'}</button></article>)}
+      </div>
+      {!employeeContext.assignments.length&&<div className="login-notice"><strong>Chưa có ca phù hợp</strong><span>Không tìm thấy lịch đang diễn ra hoặc bắt đầu trong vòng 60 phút tới.</span></div>}
+    </>}
+
     {error&&<p className="auth-error" role="alert"><b>!</b>{error}</p>}
-    <button className="login-button" disabled={isSubmitting}>{isSubmitting?<><i/>Đang xác thực...</>:'Đăng nhập hệ thống'}</button>
-    <div className="auth-help"><a href="/forgot-password">Quên mật khẩu?</a><span>Liên hệ quản trị viên nếu cần hỗ trợ</span></div>
-  </form>;
+    {scanning&&<div className="qr-scanner"><video ref={videoRef} playsInline muted/><div className="qr-frame"/><p>Đưa mã QR trên thẻ vào khung</p><button type="button" onClick={()=>setScanning(false)}>Hủy quét</button></div>}
+  </section>;
 }

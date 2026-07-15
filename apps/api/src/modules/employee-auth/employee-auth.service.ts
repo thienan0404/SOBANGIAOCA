@@ -1,0 +1,141 @@
+import {BadRequestException,ConflictException,Injectable,UnauthorizedException} from '@nestjs/common';
+import {z} from 'zod';
+import {PrismaService} from '../../infrastructure/database/prisma/prisma.service';
+
+const employeeSchema=z.object({
+  identifier:z.string().trim().min(3).max(80),
+  pin:z.string().regex(/^\d{6}$/)
+});
+const startSchema=employeeSchema.extend({shiftInstanceId:z.string().uuid()});
+
+@Injectable()
+export class EmployeeAuthService{
+  constructor(private readonly prisma:PrismaService){}
+
+  private employeeCode(identifier:string){
+    return identifier.trim().toUpperCase()
+      .replace(/^A25EMP:/,'')
+      .replace(/^A25:\/\/EMPLOYEE\//,'')
+      .trim();
+  }
+
+  private async branchContext(accountId:string){
+    const account=await this.prisma.profile.findUnique({
+      where:{id:accountId},
+      select:{
+        id:true,fullName:true,email:true,isActive:true,
+        memberships:{
+          where:{isActive:true},
+          select:{branch:{select:{id:true,name:true,code:true,address:true,organizationId:true}},role:{select:{code:true,name:true}}}
+        }
+      }
+    });
+    if(!account?.isActive)throw new UnauthorizedException('Tài khoản chi nhánh không hoạt động');
+    if(account.memberships.length!==1)
+      throw new UnauthorizedException('Tài khoản đăng nhập phải được gắn với đúng một chi nhánh');
+    const membership=account.memberships[0]!;
+    if(membership.role.code!=='BRANCH_ACCOUNT')
+      throw new UnauthorizedException('T\u00e0i kho\u1ea3n kh\u00f4ng c\u00f3 quy\u1ec1n \u0111\u0103ng nh\u1eadp chi nh\u00e1nh');
+    return{account,membership};
+  }
+
+  private async verifyPin(accountId:string,input:unknown){
+    const parsed=employeeSchema.safeParse(input);
+    if(!parsed.success)throw new BadRequestException('Mã nhân viên và PIN 6 số chưa hợp lệ');
+
+    const{account,membership}=await this.branchContext(accountId);
+    const employee=await this.prisma.profile.findFirst({
+      where:{
+        employeeCode:{equals:this.employeeCode(parsed.data.identifier),mode:'insensitive'},
+        isActive:true,
+        memberships:{some:{branchId:membership.branch.id,isActive:true}}
+      },
+      select:{id:true,fullName:true,email:true,employeeCode:true}
+    });
+    if(!employee)throw new UnauthorizedException('Mã nhân viên hoặc PIN chưa chính xác');
+
+    const[pinCheck]=await this.prisma.$queryRaw<Array<{valid:boolean}>>`
+      select coalesce(pin_hash = extensions.crypt(${parsed.data.pin},pin_hash),false) as valid
+      from profiles where id=${employee.id}::uuid
+    `;
+    if(!pinCheck?.valid)throw new UnauthorizedException('M\u00e3 nh\u00e2n vi\u00ean ho\u1eb7c PIN ch\u01b0a ch\u00ednh x\u00e1c');
+
+    return{parsed:parsed.data,account,employee,branch:membership.branch,role:membership.role};
+  }
+
+  async branch(accountId:string){
+    const{account,membership}=await this.branchContext(accountId);
+    const activeSession=await this.prisma.workSession.findFirst({
+      where:{authenticatedBy:accountId,status:'ACTIVE'},
+      include:{profile:true,branch:true,shift:true},
+      orderBy:{actualStart:'desc'}
+    });
+    return{
+      account:{id:account.id,fullName:account.fullName,email:account.email},
+      branch:membership.branch,
+      activeSession,
+      serverTime:new Date().toISOString()
+    };
+  }
+
+  async verifyEmployee(accountId:string,input:unknown){
+    const{employee,branch}=await this.verifyPin(accountId,input);
+    const now=new Date();
+    const oneHourAhead=new Date(now.getTime()+60*60*1000);
+    const assignments=await this.prisma.shiftAssignment.findMany({
+      where:{profileId:employee.id,shift:{branchId:branch.id,startsAt:{lte:oneHourAhead},endsAt:{gte:now}}},
+      include:{shift:{include:{branch:true}}},
+      orderBy:{shift:{startsAt:'asc'}}
+    });
+    return{
+      employee:{id:employee.id,fullName:employee.fullName,employeeCode:employee.employeeCode},
+      branch,
+      assignments,
+      serverTime:now.toISOString()
+    };
+  }
+
+  async startSession(accountId:string,input:unknown){
+    const parsed=startSchema.safeParse(input);
+    if(!parsed.success)throw new BadRequestException('Thông tin xác nhận ca chưa hợp lệ');
+
+    const verified=await this.verifyPin(accountId,parsed.data);
+    const now=new Date();
+    const oneHourAhead=new Date(now.getTime()+60*60*1000);
+    const active=await this.prisma.workSession.findFirst({where:{profileId:verified.employee.id,status:'ACTIVE'}});
+    if(active){
+      if(active.branchId===verified.branch.id&&active.shiftInstanceId===parsed.data.shiftInstanceId)return active;
+      throw new ConflictException('Nhân viên đang có một phiên làm việc khác chưa kết thúc');
+    }
+
+    const assignment=await this.prisma.shiftAssignment.findFirst({
+      where:{
+        profileId:verified.employee.id,
+        shiftInstanceId:parsed.data.shiftInstanceId,
+        shift:{branchId:verified.branch.id,startsAt:{lte:oneHourAhead},endsAt:{gte:now}}
+      },
+      include:{shift:true}
+    });
+    if(!assignment)throw new BadRequestException('Không tìm thấy lịch phân ca phù hợp với giờ thực tế');
+
+    const differenceMinutes=Math.round((now.getTime()-assignment.shift.startsAt.getTime())/60000);
+    const scheduleMatch=Math.abs(differenceMinutes)<=15?'ON_TIME':differenceMinutes<0?'EARLY':'LATE';
+    return this.prisma.workSession.create({data:{
+      organizationId:assignment.shift.organizationId,
+      profileId:verified.employee.id,
+      authenticatedBy:accountId,
+      branchId:verified.branch.id,
+      shiftInstanceId:assignment.shift.id,
+      scheduleMatch,
+      scheduledStart:assignment.shift.startsAt,
+      actualStart:now
+    }});
+  }
+
+  endSession(accountId:string){
+    return this.prisma.workSession.updateMany({
+      where:{authenticatedBy:accountId,status:'ACTIVE'},
+      data:{status:'COMPLETED',endedAt:new Date()}
+    });
+  }
+}
