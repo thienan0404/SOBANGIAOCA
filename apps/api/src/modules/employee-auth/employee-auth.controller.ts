@@ -17,6 +17,11 @@ export class EmployeeAuthController{
     return this.service.verifyEmployee(request.authUser!.id,body);
   }
 
+  @Post('employee/change-pin')
+  changePin(@Req()request:AuthRequest,@Body()body:unknown){
+    return this.service.changePin(request.authUser!.id,body);
+  }
+
   @Post('work-sessions')
   startSession(@Req()request:AuthRequest,@Body()body:unknown){
     return this.service.startSession(request.authUser!.id,body);

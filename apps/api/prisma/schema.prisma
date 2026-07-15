@@ -60,6 +60,7 @@ fullName String @map("full_name")
 email String
 employeeCode String? @unique @map("employee_code")
 pinHash String? @map("pin_hash")
+mustChangePin Boolean @default(true) @map("must_change_pin")
 isActive Boolean @default(true) @map("is_active")
 memberships BranchMembership[]
 shiftAssignments ShiftAssignment[]

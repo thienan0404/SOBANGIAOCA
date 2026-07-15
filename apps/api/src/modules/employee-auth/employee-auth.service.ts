@@ -7,6 +7,11 @@ const employeeSchema=z.object({
   pin:z.string().regex(/^\d{6}$/)
 });
 const startSchema=employeeSchema.extend({shiftInstanceId:z.string().uuid()});
+const changePinSchema=z.object({
+  identifier:z.string().trim().min(3).max(80),
+  currentPin:z.string().regex(/^\d{6}$/),
+  newPin:z.string().regex(/^\d{6}$/)
+});
 
 @Injectable()
 export class EmployeeAuthService{
@@ -50,7 +55,7 @@ export class EmployeeAuthService{
         isActive:true,
         memberships:{some:{branchId:membership.branch.id,isActive:true}}
       },
-      select:{id:true,fullName:true,email:true,employeeCode:true}
+      select:{id:true,fullName:true,email:true,employeeCode:true,mustChangePin:true}
     });
     if(!employee)throw new UnauthorizedException('Mã nhân viên hoặc PIN chưa chính xác');
 
@@ -88,11 +93,27 @@ export class EmployeeAuthService{
       orderBy:{shift:{startsAt:'asc'}}
     });
     return{
-      employee:{id:employee.id,fullName:employee.fullName,employeeCode:employee.employeeCode},
+      employee:{id:employee.id,fullName:employee.fullName,employeeCode:employee.employeeCode,mustChangePin:employee.mustChangePin},
       branch,
       assignments,
       serverTime:now.toISOString()
     };
+  }
+
+  async changePin(accountId:string,input:unknown){
+    const parsed=changePinSchema.safeParse(input);
+    if(!parsed.success)throw new BadRequestException('PIN phai gom dung 6 chu so');
+    if(parsed.data.newPin==='888888')throw new BadRequestException('PIN moi khong duoc trung PIN mac dinh');
+    if(parsed.data.newPin===parsed.data.currentPin)throw new BadRequestException('PIN moi phai khac PIN hien tai');
+
+    const{employee}=await this.verifyPin(accountId,{identifier:parsed.data.identifier,pin:parsed.data.currentPin});
+    await this.prisma.$executeRaw`
+      update profiles
+      set pin_hash=extensions.crypt(${parsed.data.newPin},extensions.gen_salt('bf',12)),
+          must_change_pin=false
+      where id=${employee.id}::uuid
+    `;
+    return{changed:true};
   }
 
   async startSession(accountId:string,input:unknown){
@@ -100,6 +121,8 @@ export class EmployeeAuthService{
     if(!parsed.success)throw new BadRequestException('Thông tin xác nhận ca chưa hợp lệ');
 
     const verified=await this.verifyPin(accountId,parsed.data);
+    if(verified.employee.mustChangePin)
+      throw new BadRequestException('Ban phai doi PIN mac dinh truoc khi xac nhan ca');
     const now=new Date();
     const oneHourAhead=new Date(now.getTime()+60*60*1000);
     const active=await this.prisma.workSession.findFirst({where:{profileId:verified.employee.id,status:'ACTIVE'}});

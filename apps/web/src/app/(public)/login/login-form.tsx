@@ -3,7 +3,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
 
-type Step='account'|'identity'|'pin'|'shift';
+type Step='account'|'identity'|'pin'|'change-pin'|'shift';
 type Branch={id:string;name:string;code:string;address:string|null};
 type Assignment={
   id:string;
@@ -16,7 +16,7 @@ type BranchContext={
   activeSession:{id:string;branchId:string;profile:{fullName:string;employeeCode:string|null}}|null;
 };
 type EmployeeContext={
-  employee:{id:string;fullName:string;employeeCode:string|null};
+  employee:{id:string;fullName:string;employeeCode:string|null;mustChangePin:boolean};
   branch:Branch;
   assignments:Assignment[];
 };
@@ -42,6 +42,8 @@ export function LoginForm(){
   const[password,setPassword]=useState('');
   const[identifier,setIdentifier]=useState('');
   const[pin,setPin]=useState('');
+  const[newPin,setNewPin]=useState('');
+  const[confirmPin,setConfirmPin]=useState('');
   const[branchContext,setBranchContext]=useState<BranchContext|null>(null);
   const[employeeContext,setEmployeeContext]=useState<EmployeeContext|null>(null);
   const[error,setError]=useState('');
@@ -136,10 +138,36 @@ export function LoginForm(){
         headers:{'content-type':'application/json',authorization:`Bearer ${data.session.access_token}`},
         body:JSON.stringify({identifier,pin})
       });
-      setEmployeeContext(await responseData<EmployeeContext>(response));
-      setStep('shift');
+      const context=await responseData<EmployeeContext>(response);
+      setEmployeeContext(context);
+      setStep(context.employee.mustChangePin?'change-pin':'shift');
     }catch(cause){
       setError(cause instanceof Error?cause.message:'Không thể xác thực nhân viên');
+    }finally{setLoading(false)}
+  }
+
+  async function changeEmployeePin(){
+    if(!/^\d{6}$/.test(newPin)){setError('PIN moi phai gom dung 6 chu so');return}
+    if(newPin==='888888'){setError('PIN moi khong duoc trung PIN mac dinh 888888');return}
+    if(newPin!==confirmPin){setError('Hai lan nhap PIN moi chua khop nhau');return}
+    setLoading(true);setError('');
+    try{
+      const{data}=await createClient().auth.getSession();
+      if(!data.session)throw new Error('Phien tai khoan chi nhanh da het han');
+      const response=await fetch(apiBase+'/auth/employee/change-pin',{
+        method:'POST',
+        headers:{'content-type':'application/json',authorization:`Bearer ${data.session.access_token}`},
+        body:JSON.stringify({identifier,currentPin:pin,newPin})
+      });
+      await responseData<{changed:boolean}>(response);
+      setPin(newPin);
+      setEmployeeContext(context=>context?{
+        ...context,
+        employee:{...context.employee,mustChangePin:false}
+      }:context);
+      setNewPin('');setConfirmPin('');setStep('shift');
+    }catch(cause){
+      setError(cause instanceof Error?cause.message:'Khong the doi PIN');
     }finally{setLoading(false)}
   }
 
@@ -201,6 +229,17 @@ export function LoginForm(){
       <div className="auth-card-header"><span>BƯỚC 3 · XÁC THỰC</span><h2>Nhập PIN cá nhân</h2><p>Mã nhân viên: <strong>{identifier.replace(/^A25EMP:/i,'')}</strong></p></div>
       <label>PIN 6 số<input className="pin-input" value={pin} onChange={event=>setPin(event.target.value.replace(/\D/g,'').slice(0,6))} type="password" inputMode="numeric" placeholder="••••••" autoFocus/></label>
       <button type="button" className="login-button" disabled={loading||pin.length!==6} onClick={()=>void verifyEmployee()}>{loading?<><i/>Đang xác thực...</>:'Xác thực nhân viên'}</button>
+    </>}
+
+    {step==='change-pin'&&employeeContext&&<>
+      <div className="auth-card-header">
+        <span>{'\u0042\u01af\u1eda\u0043\u0020\u0034\u0020\u00b7\u0020\u0042\u1ea2\u004f\u0020\u004d\u1eac\u0054'}</span>
+        <h2>{'\u0110\u1ed5\u0069\u0020\u0050\u0049\u004e\u0020\u006c\u1ea7\u006e\u0020\u0111\u1ea7\u0075'}</h2>
+        <p>{'\u0050\u0049\u004e\u0020\u006d\u1eb7\u0063\u0020\u0111\u1ecb\u006e\u0068\u0020\u0038\u0038\u0038\u0038\u0038\u0038\u0020\u0063\u0068\u1ec9\u0020\u0064\u00f9\u006e\u0067\u0020\u0111\u1ec3\u0020\u006b\u0068\u1edf\u0069\u0020\u0074\u1ea1\u006f\u002e\u0020\u0048\u00e3\u0079\u0020\u0111\u1ed5\u0069\u0020\u0050\u0049\u004e\u0020\u0074\u0072\u01b0\u1edb\u0063\u0020\u006b\u0068\u0069\u0020\u0076\u00e0\u006f\u0020\u0063\u0061\u002e'}</p>
+      </div>
+      <label>{'\u0050\u0049\u004e\u0020\u006d\u1edb\u0069\u0020\u0036\u0020\u0073\u1ed1'}<input className="pin-input" value={newPin} onChange={event=>setNewPin(event.target.value.replace(/\D/g,'').slice(0,6))} type="password" inputMode="numeric" placeholder="\u2022\u2022\u2022\u2022\u2022\u2022" autoFocus/></label>
+      <label>{'\u004e\u0068\u1ead\u0070\u0020\u006c\u1ea1\u0069\u0020\u0050\u0049\u004e\u0020\u006d\u1edb\u0069'}<input className="pin-input" value={confirmPin} onChange={event=>setConfirmPin(event.target.value.replace(/\D/g,'').slice(0,6))} type="password" inputMode="numeric" placeholder="\u2022\u2022\u2022\u2022\u2022\u2022"/></label>
+      <button type="button" className="login-button" disabled={loading||newPin.length!==6||confirmPin.length!==6} onClick={()=>void changeEmployeePin()}>{loading?'\u0110\u0061\u006e\u0067\u0020\u0111\u1ed5\u0069\u0020\u0050\u0049\u004e\u002e\u002e\u002e':'\u0110\u1ed5\u0069\u0020\u0050\u0049\u004e\u0020\u0076\u00e0\u0020\u0074\u0069\u1ebf\u0070\u0020\u0074\u1ee5\u0063'}</button>
     </>}
 
     {step==='shift'&&employeeContext&&<>
