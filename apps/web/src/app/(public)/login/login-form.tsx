@@ -20,20 +20,19 @@ type EmployeeContext={
   branch:Branch;
   assignments:Assignment[];
 };
-type Envelope<T>={data:T;error?:{message?:string}};
 type DetectorResult={rawValue:string};
 type Detector={detect(source:HTMLVideoElement):Promise<DetectorResult[]>};
 type DetectorConstructor=new(options:{formats:string[]})=>Detector;
 
-const apiBase=process.env.NEXT_PUBLIC_API_URL!;
 
-async function responseData<T>(response:Response):Promise<T>{
-  const payload=await response.json() as Envelope<T>;
-  if(!response.ok)throw new Error(payload.error?.message??'Không thể kết nối hệ thống');
-  return payload.data;
-}
 function formatShift(value:string){
   return new Intl.DateTimeFormat('vi-VN',{hour:'2-digit',minute:'2-digit'}).format(new Date(value));
+}
+
+async function rpcData<T>(name:string,args?:Record<string,unknown>):Promise<T>{
+  const{data,error}=await createClient().rpc(name,args);
+  if(error)throw new Error(error.message);
+  return data as T;
 }
 
 export function LoginForm(){
@@ -51,9 +50,8 @@ export function LoginForm(){
   const[scanning,setScanning]=useState(false);
   const videoRef=useRef<HTMLVideoElement>(null);
 
-  async function loadBranchContext(accessToken:string){
-    const response=await fetch(apiBase+'/auth/branch-context',{headers:{authorization:`Bearer ${accessToken}`}});
-    const context=await responseData<BranchContext>(response);
+  async function loadBranchContext(){
+    const context=await rpcData<BranchContext>('a25_branch_login_context');
     setBranchContext(context);
     if(context.activeSession){
       localStorage.setItem('a25.workSessionId',context.activeSession.id);
@@ -67,9 +65,8 @@ export function LoginForm(){
   }
 
   useEffect(()=>{
-    if(apiBase)void fetch(apiBase+'/health',{cache:'no-store'}).catch(()=>undefined);
     void createClient().auth.getSession().then(({data})=>{
-      if(data.session)void loadBranchContext(data.session.access_token).catch(()=>undefined);
+      if(data.session)void loadBranchContext().catch(()=>undefined);
     });
   },[]);
 
@@ -116,7 +113,7 @@ export function LoginForm(){
     try{
       const{data,error:loginError}=await createClient().auth.signInWithPassword({email,password});
       if(loginError||!data.session)throw new Error('Tài khoản hoặc mật khẩu chi nhánh chưa chính xác');
-      await loadBranchContext(data.session.access_token);
+      await loadBranchContext();
     }catch(cause){
       setError(cause instanceof Error?cause.message:'Không thể đăng nhập chi nhánh');
     }finally{setLoading(false)}
@@ -133,12 +130,10 @@ export function LoginForm(){
     try{
       const{data}=await createClient().auth.getSession();
       if(!data.session)throw new Error('Phiên tài khoản chi nhánh đã hết hạn');
-      const response=await fetch(apiBase+'/auth/employee/verify',{
-        method:'POST',
-        headers:{'content-type':'application/json',authorization:`Bearer ${data.session.access_token}`},
-        body:JSON.stringify({identifier,pin})
+      const context=await rpcData<EmployeeContext>('a25_verify_employee',{
+        p_identifier:identifier,
+        p_pin:pin
       });
-      const context=await responseData<EmployeeContext>(response);
       setEmployeeContext(context);
       setStep(context.employee.mustChangePin?'change-pin':'shift');
     }catch(cause){
@@ -154,12 +149,11 @@ export function LoginForm(){
     try{
       const{data}=await createClient().auth.getSession();
       if(!data.session)throw new Error('Phien tai khoan chi nhanh da het han');
-      const response=await fetch(apiBase+'/auth/employee/change-pin',{
-        method:'POST',
-        headers:{'content-type':'application/json',authorization:`Bearer ${data.session.access_token}`},
-        body:JSON.stringify({identifier,currentPin:pin,newPin})
+      await rpcData<boolean>('a25_change_employee_pin',{
+        p_identifier:identifier,
+        p_current_pin:pin,
+        p_new_pin:newPin
       });
-      await responseData<{changed:boolean}>(response);
       setPin(newPin);
       setEmployeeContext(context=>context?{
         ...context,
@@ -176,12 +170,11 @@ export function LoginForm(){
     try{
       const{data}=await createClient().auth.getSession();
       if(!data.session)throw new Error('Phiên tài khoản chi nhánh đã hết hạn');
-      const response=await fetch(apiBase+'/auth/work-sessions',{
-        method:'POST',
-        headers:{'content-type':'application/json',authorization:`Bearer ${data.session.access_token}`},
-        body:JSON.stringify({identifier,pin,shiftInstanceId:assignment.shift.id})
+      const session=await rpcData<{id:string;branchId:string}>('a25_start_work_session',{
+        p_identifier:identifier,
+        p_pin:pin,
+        p_shift_instance_id:assignment.shift.id
       });
-      const session=await responseData<{id:string;branchId:string}>(response);
       localStorage.setItem('a25.workSessionId',session.id);
       localStorage.setItem('a25.branchId',session.branchId);
       localStorage.setItem('a25.employeeName',employeeContext?.employee.fullName??'');

@@ -13,9 +13,7 @@ export function LogoutButton(){
     try {
       const supabase=createClient();
       const{data}=await supabase.auth.getSession();
-      if(data.session)void fetch(process.env.NEXT_PUBLIC_API_URL!+'/auth/work-sessions/end',{
-        method:'POST',headers:{authorization:`Bearer ${data.session.access_token}`},keepalive:true
-      }).catch(()=>undefined);
+      if(data.session)await supabase.rpc('a25_end_work_session');
       const{error}=await supabase.auth.signOut();
       if(error) throw error;
       localStorage.removeItem('a25.workSessionId');
