@@ -5,18 +5,19 @@ import {BranchDevicesService} from './branch-devices.service';
 import {RegisterBranchDeviceDto} from './dto/register-branch-device.dto';
 
 const DEVICE_COOKIE='a25_device_token';
+const isProduction=process.env.NODE_ENV==='production';
 const cookieOptions:CookieOptions={
   httpOnly:true,
-  secure:process.env.NODE_ENV==='production',
-  sameSite:'lax',
+  secure:isProduction,
+  sameSite:isProduction?'none':'lax',
   maxAge:365*24*60*60*1000,
   path:'/api/v1/branch-devices'
 };
 
 const clearCookieOptions:CookieOptions={
   httpOnly:true,
-  secure:process.env.NODE_ENV==='production',
-  sameSite:'lax',
+  secure:isProduction,
+  sameSite:isProduction?'none':'lax',
   path:'/api/v1/branch-devices'
 };
 
