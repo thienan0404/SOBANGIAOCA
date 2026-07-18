@@ -11,14 +11,14 @@ const cookieOptions:CookieOptions={
   secure:isProduction,
   sameSite:isProduction?'none':'lax',
   maxAge:365*24*60*60*1000,
-  path:'/api/v1/branch-devices'
+  path:'/api/v1'
 };
 
 const clearCookieOptions:CookieOptions={
   httpOnly:true,
   secure:isProduction,
   sameSite:isProduction?'none':'lax',
-  path:'/api/v1/branch-devices'
+  path:'/api/v1'
 };
 
 function cookieValue(request:Request,name:string){
@@ -49,6 +49,7 @@ export class BranchDevicesController {
     const token=headerToken??authorization??cookieValue(request,DEVICE_COOKIE);
     try{
       const result=await this.branchDevices.current(token);
+      response.cookie(DEVICE_COOKIE,token!,cookieOptions);
       return{data:result,meta:{}};
     }catch(error){
       response.clearCookie(DEVICE_COOKIE,clearCookieOptions);

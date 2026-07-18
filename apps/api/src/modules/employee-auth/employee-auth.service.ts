@@ -24,36 +24,32 @@ export class EmployeeAuthService{
       .trim();
   }
 
-  private async branchContext(accountId:string){
-    const account=await this.prisma.profile.findUnique({
-      where:{id:accountId},
-      select:{
-        id:true,fullName:true,email:true,isActive:true,
-        memberships:{
-          where:{isActive:true},
-          select:{branch:{select:{id:true,name:true,code:true,address:true,organizationId:true}},role:{select:{code:true,name:true}}}
-        }
-      }
-    });
-    if(!account?.isActive)throw new UnauthorizedException('Tài khoản chi nhánh không hoạt động');
-    if(account.memberships.length!==1)
-      throw new UnauthorizedException('Tài khoản đăng nhập phải được gắn với đúng một chi nhánh');
-    const membership=account.memberships[0]!;
-    if(membership.role.code!=='BRANCH_ACCOUNT')
-      throw new UnauthorizedException('T\u00e0i kho\u1ea3n kh\u00f4ng c\u00f3 quy\u1ec1n \u0111\u0103ng nh\u1eadp chi nh\u00e1nh');
-    return{account,membership};
+  private async branchContext(accountId:string,branchId:string){
+    const[account,branch]=await Promise.all([
+      this.prisma.profile.findUnique({
+        where:{id:accountId},
+        select:{id:true,fullName:true,email:true,isActive:true}
+      }),
+      this.prisma.branch.findUnique({
+        where:{id:branchId},
+        select:{id:true,name:true,code:true,address:true,organizationId:true}
+      })
+    ]);
+    if(!account?.isActive)throw new UnauthorizedException('Tài khoản quản lý không hoạt động');
+    if(!branch)throw new UnauthorizedException('Chi nhánh của thiết bị không hợp lệ');
+    return{account,branch};
   }
 
-  private async verifyPin(accountId:string,input:unknown){
+  private async verifyPin(accountId:string,branchId:string,input:unknown){
     const parsed=employeeSchema.safeParse(input);
     if(!parsed.success)throw new BadRequestException('Mã nhân viên và PIN 6 số chưa hợp lệ');
 
-    const{account,membership}=await this.branchContext(accountId);
+    const{account,branch}=await this.branchContext(accountId,branchId);
     const employee=await this.prisma.profile.findFirst({
       where:{
         employeeCode:{equals:this.employeeCode(parsed.data.identifier),mode:'insensitive'},
         isActive:true,
-        memberships:{some:{branchId:membership.branch.id,isActive:true}}
+        memberships:{some:{branchId:branch.id,isActive:true}}
       },
       select:{id:true,fullName:true,email:true,employeeCode:true,mustChangePin:true}
     });
@@ -65,11 +61,11 @@ export class EmployeeAuthService{
     `;
     if(!pinCheck?.valid)throw new UnauthorizedException('M\u00e3 nh\u00e2n vi\u00ean ho\u1eb7c PIN ch\u01b0a ch\u00ednh x\u00e1c');
 
-    return{parsed:parsed.data,account,employee,branch:membership.branch,role:membership.role};
+    return{parsed:parsed.data,account,employee,branch};
   }
 
-  async branch(accountId:string){
-    const{account,membership}=await this.branchContext(accountId);
+  async branch(accountId:string,branchId:string){
+    const{account,branch}=await this.branchContext(accountId,branchId);
     const activeSession=await this.prisma.workSession.findFirst({
       where:{authenticatedBy:accountId,status:'ACTIVE'},
       include:{profile:true,branch:true,shift:true},
@@ -77,14 +73,14 @@ export class EmployeeAuthService{
     });
     return{
       account:{id:account.id,fullName:account.fullName,email:account.email},
-      branch:membership.branch,
+      branch,
       activeSession,
       serverTime:new Date().toISOString()
     };
   }
 
-  async verifyEmployee(accountId:string,input:unknown){
-    const{employee,branch}=await this.verifyPin(accountId,input);
+  async verifyEmployee(accountId:string,branchId:string,input:unknown){
+    const{employee,branch}=await this.verifyPin(accountId,branchId,input);
     const now=new Date();
     const oneHourAhead=new Date(now.getTime()+60*60*1000);
     const assignments=await this.prisma.shiftAssignment.findMany({
@@ -100,13 +96,13 @@ export class EmployeeAuthService{
     };
   }
 
-  async changePin(accountId:string,input:unknown){
+  async changePin(accountId:string,branchId:string,input:unknown){
     const parsed=changePinSchema.safeParse(input);
-    if(!parsed.success)throw new BadRequestException('PIN phai gom dung 6 chu so');
-    if(parsed.data.newPin==='888888')throw new BadRequestException('PIN moi khong duoc trung PIN mac dinh');
-    if(parsed.data.newPin===parsed.data.currentPin)throw new BadRequestException('PIN moi phai khac PIN hien tai');
+    if(!parsed.success)throw new BadRequestException('PIN phải gồm đúng 6 chữ số');
+    if(parsed.data.newPin==='888888')throw new BadRequestException('PIN mới không được trùng PIN mặc định');
+    if(parsed.data.newPin===parsed.data.currentPin)throw new BadRequestException('PIN mới phải khác PIN hiện tại');
 
-    const{employee}=await this.verifyPin(accountId,{identifier:parsed.data.identifier,pin:parsed.data.currentPin});
+    const{employee}=await this.verifyPin(accountId,branchId,{identifier:parsed.data.identifier,pin:parsed.data.currentPin});
     await this.prisma.$executeRaw`
       update profiles
       set pin_hash=extensions.crypt(${parsed.data.newPin},extensions.gen_salt('bf',12)),
@@ -116,13 +112,13 @@ export class EmployeeAuthService{
     return{changed:true};
   }
 
-  async startSession(accountId:string,input:unknown){
+  async startSession(accountId:string,branchId:string,input:unknown){
     const parsed=startSchema.safeParse(input);
     if(!parsed.success)throw new BadRequestException('Thông tin xác nhận ca chưa hợp lệ');
 
-    const verified=await this.verifyPin(accountId,parsed.data);
+    const verified=await this.verifyPin(accountId,branchId,parsed.data);
     if(verified.employee.mustChangePin)
-      throw new BadRequestException('Ban phai doi PIN mac dinh truoc khi xac nhan ca');
+      throw new BadRequestException('Bạn phải đổi PIN mặc định trước khi xác nhận ca');
     const now=new Date();
     const oneHourAhead=new Date(now.getTime()+60*60*1000);
     const active=await this.prisma.workSession.findFirst({where:{profileId:verified.employee.id,status:'ACTIVE'}});

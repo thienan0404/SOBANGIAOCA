@@ -1,6 +1,7 @@
 'use client';
 
 import {useEffect,useState} from 'react';
+import {EmployeeLoginForm} from './employee-login-form';
 import {getCurrentBranchDevice,registerBranchDevice,type CurrentBranchDevice} from '@/lib/branch-devices';
 import {createClient} from '@/lib/supabase/client';
 
@@ -83,6 +84,8 @@ export function DeviceRegistrationForm(){
     await createClient().auth.signOut();
     setEmail('');setPassword('');setBranches([]);setBranchId('');setStep('account');setError('');
   }
+
+  if(step==='ready'&&device)return <EmployeeLoginForm device={device}/>;
 
   if(loading&&step==='account')return <section className="auth-card employee-login"><div className="login-notice"><strong>Đang kiểm tra thiết bị...</strong><span>Vui lòng chờ trong giây lát.</span></div></section>;
 
