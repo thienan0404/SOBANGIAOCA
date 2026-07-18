@@ -2,11 +2,9 @@ import {BadRequestException,ConflictException,Injectable,UnauthorizedException} 
 import {z} from 'zod';
 import {PrismaService} from '../../infrastructure/database/prisma/prisma.service';
 
-const employeeSchema=z.object({
-  identifier:z.string().trim().min(3).max(80),
-  pin:z.string().regex(/^\d{6}$/)
-});
-const startSchema=employeeSchema.extend({shiftInstanceId:z.string().uuid()});
+const identifierSchema=z.object({identifier:z.string().trim().min(3).max(80)});
+const employeeSchema=identifierSchema.extend({pin:z.string().regex(/^\d{6}$/)});
+const startSchema=identifierSchema.extend({shiftInstanceId:z.string().uuid()});
 const changePinSchema=z.object({
   identifier:z.string().trim().min(3).max(80),
   currentPin:z.string().regex(/^\d{6}$/),
@@ -40,9 +38,9 @@ export class EmployeeAuthService{
     return{account,branch};
   }
 
-  private async verifyPin(accountId:string,branchId:string,input:unknown){
-    const parsed=employeeSchema.safeParse(input);
-    if(!parsed.success)throw new BadRequestException('Mã nhân viên và PIN 6 số chưa hợp lệ');
+  private async verifyIdentity(accountId:string,branchId:string,input:unknown){
+    const parsed=identifierSchema.safeParse(input);
+    if(!parsed.success)throw new BadRequestException('Mã nhân viên chưa hợp lệ');
 
     const{account,branch}=await this.branchContext(accountId,branchId);
     const employee=await this.prisma.profile.findFirst({
@@ -53,15 +51,20 @@ export class EmployeeAuthService{
       },
       select:{id:true,fullName:true,email:true,employeeCode:true,mustChangePin:true}
     });
-    if(!employee)throw new UnauthorizedException('Mã nhân viên hoặc PIN chưa chính xác');
+    if(!employee)throw new UnauthorizedException('Không tìm thấy nhân viên đang hoạt động tại chi nhánh này');
+    return{parsed:parsed.data,account,employee,branch};
+  }
 
+  private async verifyPin(accountId:string,branchId:string,input:unknown){
+    const parsed=employeeSchema.safeParse(input);
+    if(!parsed.success)throw new BadRequestException('Mã nhân viên và PIN 6 số chưa hợp lệ');
+    const verified=await this.verifyIdentity(accountId,branchId,parsed.data);
     const[pinCheck]=await this.prisma.$queryRaw<Array<{valid:boolean}>>`
       select coalesce(pin_hash = extensions.crypt(${parsed.data.pin},pin_hash),false) as valid
-      from profiles where id=${employee.id}::uuid
+      from profiles where id=${verified.employee.id}::uuid
     `;
-    if(!pinCheck?.valid)throw new UnauthorizedException('M\u00e3 nh\u00e2n vi\u00ean ho\u1eb7c PIN ch\u01b0a ch\u00ednh x\u00e1c');
-
-    return{parsed:parsed.data,account,employee,branch};
+    if(!pinCheck?.valid)throw new UnauthorizedException('Mã nhân viên hoặc PIN chưa chính xác');
+    return verified;
   }
 
   async branch(accountId:string,branchId:string){
@@ -80,7 +83,7 @@ export class EmployeeAuthService{
   }
 
   async verifyEmployee(accountId:string,branchId:string,input:unknown){
-    const{employee,branch}=await this.verifyPin(accountId,branchId,input);
+    const{employee,branch}=await this.verifyIdentity(accountId,branchId,input);
     const now=new Date();
     const oneHourAhead=new Date(now.getTime()+60*60*1000);
     const assignments=await this.prisma.shiftAssignment.findMany({
@@ -89,7 +92,7 @@ export class EmployeeAuthService{
       orderBy:{shift:{startsAt:'asc'}}
     });
     return{
-      employee:{id:employee.id,fullName:employee.fullName,employeeCode:employee.employeeCode,mustChangePin:employee.mustChangePin},
+      employee:{id:employee.id,fullName:employee.fullName,employeeCode:employee.employeeCode,mustChangePin:false},
       branch,
       assignments,
       serverTime:now.toISOString()
@@ -116,9 +119,7 @@ export class EmployeeAuthService{
     const parsed=startSchema.safeParse(input);
     if(!parsed.success)throw new BadRequestException('Thông tin xác nhận ca chưa hợp lệ');
 
-    const verified=await this.verifyPin(accountId,branchId,parsed.data);
-    if(verified.employee.mustChangePin)
-      throw new BadRequestException('Bạn phải đổi PIN mặc định trước khi xác nhận ca');
+    const verified=await this.verifyIdentity(accountId,branchId,parsed.data);
     const now=new Date();
     const oneHourAhead=new Date(now.getTime()+60*60*1000);
     const active=await this.prisma.workSession.findFirst({where:{profileId:verified.employee.id,status:'ACTIVE'}});

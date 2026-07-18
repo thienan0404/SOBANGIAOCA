@@ -36,14 +36,14 @@ async function request<T>(path:string,body:unknown):Promise<T>{
   return payload.data;
 }
 
-export function verifyEmployee(identifier:string,pin:string){
-  return request<EmployeeContext>('/auth/employee/verify',{identifier,pin});
+export function verifyEmployee(identifier:string){
+  return request<EmployeeContext>('/auth/employee/verify',{identifier});
 }
 
 export function changeEmployeePin(identifier:string,currentPin:string,newPin:string){
   return request<{changed:boolean}>('/auth/employee/change-pin',{identifier,currentPin,newPin});
 }
 
-export function startWorkSession(identifier:string,pin:string,shiftInstanceId:string){
-  return request<WorkSession>('/auth/work-sessions',{identifier,pin,shiftInstanceId});
+export function startWorkSession(identifier:string,shiftInstanceId:string){
+  return request<WorkSession>('/auth/work-sessions',{identifier,shiftInstanceId});
 }
