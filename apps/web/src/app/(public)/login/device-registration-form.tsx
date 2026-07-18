@@ -2,7 +2,7 @@
 
 import {useEffect,useState} from 'react';
 import {EmployeeLoginForm} from './employee-login-form';
-import {getCurrentBranchDevice,registerBranchDevice,type CurrentBranchDevice} from '@/lib/branch-devices';
+import {getCachedBranchDevice,getCurrentBranchDevice,registerBranchDevice,type CurrentBranchDevice} from '@/lib/branch-devices';
 import {createClient} from '@/lib/supabase/client';
 
 type Step='account'|'setup'|'ready';
@@ -33,15 +33,24 @@ export function DeviceRegistrationForm(){
 
   useEffect(()=>{
     let active=true;
+    const cached=getCachedBranchDevice();
+    if(cached)queueMicrotask(()=>{
+      if(!active)return;
+      setDevice(cached);
+      setStep('ready');
+      setLoading(false);
+    });
     void(async()=>{
       try{
         const current=await getCurrentBranchDevice();
         if(!active)return;
         if(current){setDevice(current);setStep('ready');return}
+        setDevice(null);
         const{data}=await createClient().auth.getSession();
         if(data.session)await loadBranches();
+        else setStep('account');
       }catch(cause){
-        if(active)setError(cause instanceof Error?cause.message:'Không thể kiểm tra thiết bị');
+        if(active&&!cached)setError(cause instanceof Error?cause.message:'Không thể kiểm tra thiết bị');
       }finally{if(active)setLoading(false)}
     })();
     return()=>{active=false};

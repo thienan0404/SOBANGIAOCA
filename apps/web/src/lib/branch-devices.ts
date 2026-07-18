@@ -12,6 +12,23 @@ type ApiEnvelope<T>={data:T;meta:Record<string,unknown>;requestId:string};
 type ApiFailure={error?:{message?:string}};
 
 const apiUrl=(process.env.NEXT_PUBLIC_API_URL??'').replace(/\/$/,'');
+const DEVICE_CACHE_KEY='a25.currentBranchDevice';
+
+export function getCachedBranchDevice():CurrentBranchDevice|null{
+  if(typeof window==='undefined')return null;
+  try{
+    const value=JSON.parse(localStorage.getItem(DEVICE_CACHE_KEY)??'null') as CurrentBranchDevice|null;
+    return value?.deviceId&&value.deviceCode&&value.branch?.id?value:null;
+  }catch{return null}
+}
+
+export function cacheBranchDevice(device:CurrentBranchDevice){
+  if(typeof window!=='undefined')localStorage.setItem(DEVICE_CACHE_KEY,JSON.stringify(device));
+}
+
+export function clearCachedBranchDevice(){
+  if(typeof window!=='undefined')localStorage.removeItem(DEVICE_CACHE_KEY);
+}
 
 async function responseData<T>(response:Response):Promise<T>{
   const payload=await response.json().catch(()=>({})) as ApiEnvelope<T>&ApiFailure;
@@ -24,8 +41,10 @@ export async function getCurrentBranchDevice():Promise<CurrentBranchDevice|null>
     credentials:'include',
     cache:'no-store'
   });
-  if(response.status===401)return null;
-  return responseData<CurrentBranchDevice>(response);
+  if(response.status===401){clearCachedBranchDevice();return null}
+  const device=await responseData<CurrentBranchDevice>(response);
+  cacheBranchDevice(device);
+  return device;
 }
 
 export async function registerBranchDevice(accessToken:string,input:{branchId:string;deviceCode:string;deviceName:string}){
@@ -35,5 +54,7 @@ export async function registerBranchDevice(accessToken:string,input:{branchId:st
     headers:{'content-type':'application/json',authorization:`Bearer ${accessToken}`},
     body:JSON.stringify(input)
   });
-  return responseData<RegisteredBranchDevice>(response);
+  const device=await responseData<RegisteredBranchDevice>(response);
+  cacheBranchDevice(device);
+  return device;
 }
