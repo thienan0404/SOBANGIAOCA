@@ -50,6 +50,7 @@ memberships BranchMembership[]
 handovers Handover[]
 shifts ShiftInstance[]
 workSessions WorkSession[]
+devices BranchDevice[]
 @@unique([organizationId,code])
 @@map("branches")
 }
@@ -68,7 +69,26 @@ workSessions WorkSession[] @relation("EmployeeWorkSessions")
 authenticatedWorkSessions WorkSession[] @relation("BranchAccountWorkSessions")
 createdHandovers Handover[] @relation("HandoverCreator")
 participants HandoverParticipant[]
+registeredDevices BranchDevice[] @relation("RegisteredBranchDevices")
 @@map("profiles")
+}
+model BranchDevice {
+id String @id @default(uuid()) @db.Uuid
+branchId String @map("branch_id") @db.Uuid
+deviceCode String @unique @map("device_code")
+deviceName String @map("device_name")
+deviceTokenHash String @unique @map("device_token_hash") @db.VarChar(64)
+isActive Boolean @default(true) @map("is_active")
+registeredById String @map("registered_by") @db.Uuid
+registeredAt DateTime @default(now()) @map("registered_at") @db.Timestamptz
+lastSeenAt DateTime? @map("last_seen_at") @db.Timestamptz
+revokedAt DateTime? @map("revoked_at") @db.Timestamptz
+createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+branch Branch @relation(fields:[branchId],references:[id])
+registeredBy Profile @relation("RegisteredBranchDevices",fields:[registeredById],references:[id])
+@@index([branchId,isActive])
+@@map("branch_devices")
 }
 model Role {
 id String @id @default(uuid()) @db.Uuid
