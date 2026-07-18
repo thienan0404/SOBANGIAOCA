@@ -22,9 +22,9 @@ export function DeviceRegistrationForm(){
   async function loadBranches(){
     const supabase=createClient();
     const{data,error:branchError}=await supabase.from('branches').select('id,code,name,address').order('name');
-    if(branchError)throw new Error('Kh?ng th? t?i danh s?ch chi nh?nh ???c ph?n c?ng');
+    if(branchError)throw new Error('Không thể tải danh sách chi nhánh được phân công');
     const available=(data??[]) as Branch[];
-    if(!available.length)throw new Error('T?i kho?n ch?a ???c ph?n quy?n qu?n l? chi nh?nh');
+    if(!available.length)throw new Error('Tài khoản chưa được phân quyền quản lý chi nhánh');
     setBranches(available);
     setBranchId(current=>current||available[0]!.id);
     setStep('setup');
@@ -40,34 +40,34 @@ export function DeviceRegistrationForm(){
         const{data}=await createClient().auth.getSession();
         if(data.session)await loadBranches();
       }catch(cause){
-        if(active)setError(cause instanceof Error?cause.message:'Kh?ng th? ki?m tra thi?t b?');
+        if(active)setError(cause instanceof Error?cause.message:'Không thể kiểm tra thiết bị');
       }finally{if(active)setLoading(false)}
     })();
     return()=>{active=false};
   },[]);
 
   async function loginManager(){
-    if(!email||!password){setError('Vui l?ng nh?p t?i kho?n v? m?t kh?u qu?n l?');return}
+    if(!email||!password){setError('Vui lòng nhập tài khoản và mật khẩu quản lý');return}
     setLoading(true);setError('');
     try{
       const{data,error:loginError}=await createClient().auth.signInWithPassword({email,password});
-      if(loginError||!data.session)throw new Error('T?i kho?n ho?c m?t kh?u ch?a ch?nh x?c');
+      if(loginError||!data.session)throw new Error('Tài khoản hoặc mật khẩu chưa chính xác');
       await loadBranches();
     }catch(cause){
-      setError(cause instanceof Error?cause.message:'Kh?ng th? ??ng nh?p');
+      setError(cause instanceof Error?cause.message:'Không thể đăng nhập');
     }finally{setLoading(false)}
   }
 
   async function register(){
-    if(!branchId){setError('Vui l?ng ch?n chi nh?nh');return}
+    if(!branchId){setError('Vui lòng chọn chi nhánh');return}
     if(!/^[A-Z0-9][A-Z0-9-]{2,63}$/.test(deviceCode.trim().toUpperCase())){
-      setError('M? thi?t b? ph?i c? t? 3 k? t?, ch? g?m ch?, s? v? d?u g?ch ngang');return;
+      setError('Mã thiết bị phải có từ 3 ký tự, chỉ gồm chữ, số và dấu gạch ngang');return;
     }
-    if(!deviceName.trim()){setError('Vui l?ng nh?p t?n thi?t b?');return}
+    if(!deviceName.trim()){setError('Vui lòng nhập tên thiết bị');return}
     setLoading(true);setError('');
     try{
       const{data}=await createClient().auth.getSession();
-      if(!data.session)throw new Error('Phi?n ??ng nh?p qu?n l? ?? h?t h?n');
+      if(!data.session)throw new Error('Phiên đăng nhập quản lý đã hết hạn');
       const registered=await registerBranchDevice(data.session.access_token,{
         branchId,
         deviceCode:deviceCode.trim().toUpperCase(),
@@ -75,7 +75,7 @@ export function DeviceRegistrationForm(){
       });
       setDevice(registered);setStep('ready');
     }catch(cause){
-      setError(cause instanceof Error?cause.message:'Kh?ng th? ??ng k? thi?t b?');
+      setError(cause instanceof Error?cause.message:'Không thể đăng ký thiết bị');
     }finally{setLoading(false)}
   }
 
@@ -84,39 +84,39 @@ export function DeviceRegistrationForm(){
     setEmail('');setPassword('');setBranches([]);setBranchId('');setStep('account');setError('');
   }
 
-  if(loading&&step==='account')return <section className="auth-card employee-login"><div className="login-notice"><strong>?ang ki?m tra thi?t b?...</strong><span>Vui l?ng ch? trong gi?y l?t.</span></div></section>;
+  if(loading&&step==='account')return <section className="auth-card employee-login"><div className="login-notice"><strong>Đang kiểm tra thiết bị...</strong><span>Vui lòng chờ trong giây lát.</span></div></section>;
 
   return <section className="auth-card employee-login">
-    <div className="login-progress" aria-label="Ti?n tr?nh ??ng k? thi?t b?">
+    <div className="login-progress" aria-label="Tiến trình đăng ký thiết bị">
       {(step==='ready'?['ready']:['account','setup']).map((item,index)=><i key={item} className={item===step?'active':''}>{index+1}</i>)}
     </div>
 
     {step==='account'&&<>
-      <div className="auth-card-header"><span>B??C 1 ? QU?N L?</span><h2>??ng nh?p t?i kho?n qu?n l?</h2><p>D?ng t?i kho?n qu?n l? chi nh?nh ho?c t?i kho?n qu?n tr? vi?n.</p></div>
+      <div className="auth-card-header"><span>BƯỚC 1 · QUẢN LÝ</span><h2>Đăng nhập tài khoản quản lý</h2><p>Dùng tài khoản quản lý chi nhánh hoặc tài khoản quản trị viên.</p></div>
       <div className="auth-fields">
-        <label>T?i kho?n qu?n l?<input type="email" value={email} onChange={event=>setEmail(event.target.value)} placeholder="quanly@a25hotel.com" autoComplete="username"/></label>
-        <label>M?t kh?u<input type="password" value={password} onChange={event=>setPassword(event.target.value)} placeholder="Nh?p m?t kh?u" autoComplete="current-password"/></label>
+        <label>Tài khoản quản lý<input type="email" value={email} onChange={event=>setEmail(event.target.value)} placeholder="quanly@a25hotel.com" autoComplete="username"/></label>
+        <label>Mật khẩu<input type="password" value={password} onChange={event=>setPassword(event.target.value)} placeholder="Nhập mật khẩu" autoComplete="current-password"/></label>
       </div>
-      <button type="button" className="login-button" disabled={loading} onClick={()=>void loginManager()}>{loading?'?ang ??ng nh?p...':'??ng nh?p qu?n l?'}</button>
+      <button type="button" className="login-button" disabled={loading} onClick={()=>void loginManager()}>{loading?'Đang đăng nhập...':'Đăng nhập quản lý'}</button>
     </>}
 
     {step==='setup'&&<>
-      <button type="button" className="login-back" onClick={()=>void changeManager()}>? ??i t?i kho?n qu?n l?</button>
-      <div className="auth-card-header"><span>B??C 2 ? THI?T B?</span><h2>??ng k? thi?t b? l? t?n</h2><p>Ch?n ??ng chi nh?nh ?ang s? d?ng thi?t b? n?y.</p></div>
+      <button type="button" className="login-back" onClick={()=>void changeManager()}>← Đổi tài khoản quản lý</button>
+      <div className="auth-card-header"><span>BƯỚC 2 · THIẾT BỊ</span><h2>Đăng ký thiết bị lễ tân</h2><p>Chọn đúng chi nhánh đang sử dụng thiết bị này.</p></div>
       <div className="shift-options">
-        {branches.map(branch=><article key={branch.id}><div><span>{branch.code}</span><strong>{branch.name}</strong><small>{branch.address}</small></div><button type="button" onClick={()=>setBranchId(branch.id)}>{branchId===branch.id?'?? ch?n':'Ch?n'}</button></article>)}
+        {branches.map(branch=><article key={branch.id}><div><span>{branch.code}</span><strong>{branch.name}</strong><small>{branch.address}</small></div><button type="button" onClick={()=>setBranchId(branch.id)}>{branchId===branch.id?'Đã chọn':'Chọn'}</button></article>)}
       </div>
       <div className="auth-fields">
-        <label>M? thi?t b?<input value={deviceCode} onChange={event=>setDeviceCode(event.target.value.toUpperCase())} placeholder="45PCT-FRONTDESK-01" autoCapitalize="characters"/></label>
-        <label>T?n thi?t b?<input value={deviceName} onChange={event=>setDeviceName(event.target.value)} placeholder="Qu?y l? t?n ch?nh"/></label>
+        <label>Mã thiết bị<input value={deviceCode} onChange={event=>setDeviceCode(event.target.value.toUpperCase())} placeholder="45PCT-FRONTDESK-01" autoCapitalize="characters"/></label>
+        <label>Tên thiết bị<input value={deviceName} onChange={event=>setDeviceName(event.target.value)} placeholder="Quầy lễ tân chính"/></label>
       </div>
-      <button type="button" className="login-button" disabled={loading} onClick={()=>void register()}>{loading?'?ang ??ng k?...':'??ng k? thi?t b?'}</button>
+      <button type="button" className="login-button" disabled={loading} onClick={()=>void register()}>{loading?'Đang đăng ký...':'Đăng ký thiết bị'}</button>
     </>}
 
     {step==='ready'&&device&&<>
-      <div className="branch-badge"><span>{device.branch.code}</span><div><strong>{device.branch.name}</strong><small>{device.deviceName} ? {device.deviceCode}</small></div></div>
-      <div className="auth-card-header"><span>THI?T B? ?? S?N S?NG</span><h2>?? g?n chi nh?nh</h2><p>Thi?t b? s? ghi nh? chi nh?nh n?y cho nh?ng l?n truy c?p sau.</p></div>
-      <div className="login-notice"><strong>{device.branch.name}</strong><span>Thi?t b? ?ang ho?t ??ng v? ?? ???c x?c th?c.</span></div>
+      <div className="branch-badge"><span>{device.branch.code}</span><div><strong>{device.branch.name}</strong><small>{device.deviceName} · {device.deviceCode}</small></div></div>
+      <div className="auth-card-header"><span>THIẾT BỊ ĐÃ SẴN SÀNG</span><h2>Đã gán chi nhánh</h2><p>Thiết bị sẽ ghi nhớ chi nhánh này cho những lần truy cập sau.</p></div>
+      <div className="login-notice"><strong>{device.branch.name}</strong><span>Thiết bị đang hoạt động và đã được xác thực.</span></div>
     </>}
 
     {error&&<p className="auth-error" role="alert"><b>!</b>{error}</p>}

@@ -15,7 +15,7 @@ const apiUrl=(process.env.NEXT_PUBLIC_API_URL??'').replace(/\/$/,'');
 
 async function responseData<T>(response:Response):Promise<T>{
   const payload=await response.json().catch(()=>({})) as ApiEnvelope<T>&ApiFailure;
-  if(!response.ok)throw new Error(payload.error?.message??'Kh?ng th? k?t n?i m?y ch?');
+  if(!response.ok)throw new Error(payload.error?.message??'Không thể kết nối máy chủ');
   return payload.data;
 }
 

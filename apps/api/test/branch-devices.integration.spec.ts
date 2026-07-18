@@ -11,7 +11,7 @@ import {BranchDevicesService} from '../src/modules/branch-devices/branch-devices
 const registered={
   deviceId:'a3b40f83-e914-444a-bbaf-027ea1e70f6c',
   deviceCode:'45PCT-FRONTDESK-01',
-  deviceName:'Qu?y l? t?n ch?nh',
+  deviceName:'Quầy lễ tân chính',
   branch:{id:'6f0df350-9662-4c37-9a93-55e4c73f8326',code:'45PCT',name:'45 Phan Chu Trinh'},
   deviceToken:'a25dv_integration-token'
 };

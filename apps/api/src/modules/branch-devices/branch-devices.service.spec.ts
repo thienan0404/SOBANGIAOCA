@@ -3,7 +3,7 @@ import {PrismaService} from '../../infrastructure/database/prisma/prisma.service
 import {BranchDevicesService,branchDeviceTokenHash} from './branch-devices.service';
 
 const branch={id:'6f0df350-9662-4c37-9a93-55e4c73f8326',code:'45PCT',name:'45 Phan Chu Trinh',organizationId:'3fbb378a-e6ee-47bb-b3c5-c33210df4421'};
-const input={branchId:branch.id,deviceCode:'45PCT-FRONTDESK-01',deviceName:'Qu?y l? t?n ch?nh'};
+const input={branchId:branch.id,deviceCode:'45PCT-FRONTDESK-01',deviceName:'Quầy lễ tân chính'};
 
 function createFixture(){
   const prisma={

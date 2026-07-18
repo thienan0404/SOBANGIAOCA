@@ -8,7 +8,7 @@ export class RegisterBranchDeviceDto {
   @Transform(({value}:{value:unknown})=>typeof value==='string'?value.trim().toUpperCase():value)
   @IsString()
   @Length(3,64)
-  @Matches(/^[A-Z0-9][A-Z0-9-]*$/,{message:'M? thi?t b? ch? ???c ch?a ch? in hoa, s? v? d?u g?ch ngang'})
+  @Matches(/^[A-Z0-9][A-Z0-9-]*$/,{message:'Mã thiết bị chỉ được chứa chữ in hoa, số và dấu gạch ngang'})
   deviceCode!:string;
 
   @Transform(({value}:{value:unknown})=>typeof value==='string'?value.trim():value)

@@ -22,7 +22,7 @@ export class BranchDevicesService {
       where:{id:input.branchId},
       select:{id:true,code:true,name:true,organizationId:true}
     });
-    if(!branch)throw new NotFoundException('Kh?ng t?m th?y chi nh?nh');
+    if(!branch)throw new NotFoundException('Không tìm thấy chi nhánh');
 
     const permission=await this.prisma.branchMembership.findFirst({
       where:{
@@ -37,13 +37,13 @@ export class BranchDevicesService {
       },
       select:{id:true}
     });
-    if(!permission)throw new ForbiddenException('Ch? qu?n l? chi nh?nh ho?c qu?n tr? vi?n m?i ???c ??ng k? thi?t b?');
+    if(!permission)throw new ForbiddenException('Chỉ quản lý chi nhánh hoặc quản trị viên mới được đăng ký thiết bị');
 
     const existing=await this.prisma.branchDevice.findUnique({
       where:{deviceCode:input.deviceCode},
       select:{id:true}
     });
-    if(existing)throw new ConflictException('M? thi?t b? ?? ???c s? d?ng');
+    if(existing)throw new ConflictException('Mã thiết bị đã được sử dụng');
 
     const deviceToken=`a25dv_${randomBytes(32).toString('base64url')}`;
     try{
@@ -65,26 +65,26 @@ export class BranchDevicesService {
         deviceToken
       };
     }catch(error){
-      if(isUniqueConstraint(error))throw new ConflictException('M? thi?t b? ?? ???c s? d?ng');
+      if(isUniqueConstraint(error))throw new ConflictException('Mã thiết bị đã được sử dụng');
       throw error;
     }
   }
 
   async current(rawToken:string|undefined){
-    if(!rawToken)throw new UnauthorizedException('Thi?t b? ch?a ???c ??ng k?');
+    if(!rawToken)throw new UnauthorizedException('Thiết bị chưa được đăng ký');
     const device=await this.prisma.branchDevice.findUnique({
       where:{deviceTokenHash:hashDeviceToken(rawToken)},
       include:{branch:{select:{id:true,code:true,name:true}}}
     });
     if(!device||!device.isActive||device.revokedAt){
-      throw new UnauthorizedException('Thi?t b? kh?ng h?p l?, ?? b? v? hi?u h?a ho?c thu h?i');
+      throw new UnauthorizedException('Thiết bị không hợp lệ, đã bị vô hiệu hóa hoặc thu hồi');
     }
 
     const lastSeenAt=new Date();
     const updated=await this.prisma.branchDevice.updateMany({
       where:{id:device.id,isActive:true,revokedAt:null},data:{lastSeenAt}
     });
-    if(updated.count!==1)throw new UnauthorizedException('Thi?t b? ?? b? v? hi?u h?a ho?c thu h?i');
+    if(updated.count!==1)throw new UnauthorizedException('Thiết bị đã bị vô hiệu hóa hoặc thu hồi');
 
     return{
       deviceId:device.id,
