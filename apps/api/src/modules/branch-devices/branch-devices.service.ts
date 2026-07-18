@@ -90,6 +90,7 @@ export class BranchDevicesService {
       deviceId:device.id,
       deviceCode:device.deviceCode,
       deviceName:device.deviceName,
+      registeredById:device.registeredById,
       branch:device.branch,
       lastSeenAt
     };

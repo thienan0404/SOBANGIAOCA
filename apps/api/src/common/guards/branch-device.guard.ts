@@ -21,7 +21,7 @@ export class BranchDeviceGuard implements CanActivate{
     const deviceAuthorization=request.headers.authorization?.match(/^Device\s+(.+)$/i)?.[1];
     const token=headerToken??deviceAuthorization??cookieValue(request.headers.cookie,'a25_device_token');
     const current=await this.devices.current(token);
-    request.branchDevice={deviceId:current.deviceId,branchId:current.branch.id,deviceCode:current.deviceCode};
+    request.branchDevice={deviceId:current.deviceId,branchId:current.branch.id,deviceCode:current.deviceCode,registeredById:current.registeredById};
     return true;
   }
 }

@@ -1,5 +1,3 @@
-import {createClient} from '@/lib/supabase/client';
-
 export type EmployeeBranch={id:string;name:string;code:string;address:string|null};
 export type ShiftAssignment={
   id:string;
@@ -17,18 +15,11 @@ type ApiFailure={error?:{message?:string};message?:string};
 type ApiEnvelope<T>={data:T;requestId:string};
 const apiUrl=(process.env.NEXT_PUBLIC_API_URL??'').replace(/\/$/,'');
 
-async function accessToken(){
-  const{data}=await createClient().auth.getSession();
-  if(!data.session)throw new Error('Phiên đăng nhập quản lý đã hết hạn. Vui lòng đăng ký lại thiết bị.');
-  return data.session.access_token;
-}
-
 async function request<T>(path:string,body:unknown):Promise<T>{
-  const token=await accessToken();
   const response=await fetch(`${apiUrl}${path}`,{
     method:'POST',
     credentials:'include',
-    headers:{'content-type':'application/json',authorization:`Bearer ${token}`},
+    headers:{'content-type':'application/json'},
     body:JSON.stringify(body)
   });
   const payload=await response.json().catch(()=>({})) as ApiEnvelope<T>&ApiFailure;
