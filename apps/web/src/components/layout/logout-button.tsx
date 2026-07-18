@@ -1,41 +1,32 @@
 'use client';
 
 import {useState} from 'react';
-import {createClient} from '@/lib/supabase/client';
+
+const apiUrl=(process.env.NEXT_PUBLIC_API_URL??'').replace(/\/$/,'');
 
 export function LogoutButton(){
-  const [pending,setPending]=useState(false);
+  const[pending,setPending]=useState(false);
 
   async function handleLogout(){
-    if(pending) return;
+    if(pending)return;
     setPending(true);
-
-    try {
-      const supabase=createClient();
-      const{data}=await supabase.auth.getSession();
-      if(data.session)await supabase.rpc('a25_end_work_session');
-      const{error}=await supabase.auth.signOut();
-      if(error) throw error;
+    const workSessionId=localStorage.getItem('a25.workSessionId')??'';
+    try{
+      await fetch(`${apiUrl}/auth/work-sessions/end`,{
+        method:'POST',
+        credentials:'include',
+        headers:{'x-work-session-id':workSessionId}
+      });
+    }finally{
       localStorage.removeItem('a25.workSessionId');
       localStorage.removeItem('a25.branchId');
       localStorage.removeItem('a25.employeeName');
       localStorage.removeItem('a25.employeeCode');
       window.location.replace('/login');
-    } catch {
-      setPending(false);
-      alert('Chưa thể đăng xuất. Vui lòng thử lại.');
     }
   }
 
-  return <button
-    type="button"
-    className="logout-button"
-    aria-label="Đăng xuất khỏi hệ thống"
-    title="Đăng xuất"
-    disabled={pending}
-    onClick={handleLogout}
-  >
-    <span>{pending?'Đang thoát…':'Đăng xuất'}</span>
-    <b aria-hidden="true">↗</b>
+  return <button type="button" className="logout-button" aria-label="Đăng xuất khỏi ca làm việc" title="Đăng xuất" disabled={pending} onClick={()=>void handleLogout()}>
+    <span>{pending?'Đang thoát…':'Đăng xuất'}</span><b aria-hidden="true">↗</b>
   </button>;
 }
