@@ -1,1 +1,3 @@
-﻿import Link from 'next/link';import {HandoverList} from '@/features/handovers';export default function Handovers(){return <><div className="section-heading"><h1>Danh sách bàn giao</h1><Link className="add-button" href="/handovers/create">＋ Tạo</Link></div><HandoverList/></>}
+import Link from 'next/link';
+import {HandoverList} from '@/features/handovers';
+export default function Handovers(){return <div className="handover-index-page"><header className="inner-page-title"><div><h1>Chi tiết bàn giao</h1><p>Danh sách phiếu theo ca làm việc</p></div><Link className="header-create" href="/handovers/create">＋ Tạo mới</Link></header><div className="ops-section-heading"><div><span>SỔ BÀN GIAO</span><h2>Tất cả phiếu</h2></div></div><HandoverList/></div>}

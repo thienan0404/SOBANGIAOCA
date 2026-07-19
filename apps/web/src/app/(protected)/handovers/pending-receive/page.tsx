@@ -1,1 +1,2 @@
-import {HandoverList} from '@/features/handovers';export default function Pending(){return <><h1>Phiếu chờ nhận</h1><HandoverList/></>}
+import {HandoverList} from '@/features/handovers';
+export default function Pending(){return <div><header className="inner-page-title"><div><h1>Công việc ca sau</h1><p>Nội dung đang chờ tiếp nhận và xử lý</p></div></header><div className="work-intro"><span>✓</span><div><strong>Danh sách cần theo dõi</strong><p>Mở từng phiếu để xem công việc, mức ưu tiên và xác nhận nhận ca.</p></div></div><HandoverList/></div>}
