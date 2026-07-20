@@ -13,7 +13,7 @@ Turn the existing mobile handover prototype into a production-oriented pnpm/Turb
 5. Build the NestJS modular monolith with request IDs, structured errors, Supabase JWT verification and organization/branch authorization.
 6. Complete the first vertical slice: login, branch context, draft creation, participants, items, checklist, submit, supplement, confirm, audit and realtime invalidation.
 7. Add BullMQ worker/scheduler foundations, outbox processing and idempotent reminder jobs.
-8. Add Render Blueprint, Docker local development and GitHub Actions.
+8. Add manual Render deployment, Docker local development and GitHub Actions.
 9. Run install, lint, typecheck, unit tests and production builds. Fix failures before handoff.
 
 ## Increment policy

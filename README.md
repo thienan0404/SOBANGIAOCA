@@ -40,6 +40,6 @@ SQL migrations are authoritative. Never use Prisma schema push in production. Us
 
 ## Render
 
-Create a Blueprint from `infrastructure/render/render.yaml`. Build from repository root; do not set `apps/web` or `apps/api` as Root Directory because workspace packages are shared.
+Deploy manually as two Render services: one global Static Site for `@a25/web` and one Node Web Service in Singapore for `@a25/api`. The project intentionally does not use a Render Blueprint.
 
-See `docs/render-deployment.md` for required environment variables and deployment order.
+See `docs/render-deployment.md` for the exact commands, environment variables and migration order. Keep Root Directory empty because both applications use shared workspace packages from the repository root.
