@@ -18,15 +18,15 @@ export function AccountLoginForm(){
       supabase.from('profiles').select('full_name').maybeSingle(),
       supabase.from('branches').select('id,code,name,address').order('name').limit(2)
     ]);
-    if(branchError)throw new Error('Kh?ng th? t?i th?ng tin chi nh?nh');
+    if(branchError)throw new Error('Không thể tải thông tin chi nhánh');
     const available=(branches??[]) as Branch[];
-    if(!available.length)throw new Error('T?i kho?n ch?a ???c ph?n quy?n v?o chi nh?nh');
+    if(!available.length)throw new Error('Tài khoản chưa được phân quyền vào chi nhánh');
     const branch=available[0]!;
     localStorage.setItem('a25.branchId',branch.id);
     localStorage.setItem('a25.branchName',branch.name);
     localStorage.setItem('a25.branchCode',branch.code);
     localStorage.setItem('a25.currentBranchDevice',JSON.stringify({deviceId:'account-login',deviceCode:'ACCOUNT',deviceName:'Tai khoan chi nhanh',branch}));
-    localStorage.setItem('a25.employeeName',profile?.full_name||'Nh?n vi?n A25 Hotel');
+    localStorage.setItem('a25.employeeName',profile?.full_name||'Nhân viên A25 Hotel');
     localStorage.removeItem('a25.workSessionId');
     window.location.replace('/dashboard');
   }
@@ -40,26 +40,26 @@ export function AccountLoginForm(){
   },[]);
 
   async function login(){
-    if(!email.trim()||!password){setError('Vui l?ng nh?p t?i kho?n v? m?t kh?u');return}
+    if(!email.trim()||!password){setError('Vui lòng nhập tài khoản và mật khẩu');return}
     setLoading(true);setError('');
     try{
       const{data,error:loginError}=await createClient().auth.signInWithPassword({email:email.trim(),password});
-      if(loginError||!data.session)throw new Error('T?i kho?n ho?c m?t kh?u ch?a ch?nh x?c');
+      if(loginError||!data.session)throw new Error('Tài khoản hoặc mật khẩu chưa chính xác');
       await openApplication();
-    }catch(cause){setError(cause instanceof Error?cause.message:'Kh?ng th? ??ng nh?p')}
+    }catch(cause){setError(cause instanceof Error?cause.message:'Không thể đăng nhập')}
     finally{setLoading(false)}
   }
 
-  if(checking)return <section className="auth-card employee-login"><div className="login-notice"><strong>?ang ki?m tra ??ng nh?p...</strong><span>Vui l?ng ch? trong gi?y l?t.</span></div></section>;
+  if(checking)return <section className="auth-card employee-login"><div className="login-notice"><strong>Đang kiểm tra đăng nhập...</strong><span>Vui lòng chờ trong giây lát.</span></div></section>;
 
   return <section className="auth-card employee-login">
-    <div className="login-progress" aria-label="??ng nh?p"><i className="active">1</i></div>
-    <div className="auth-card-header"><span>??NG NH?P H? TH?NG</span><h2>Ch?o m?ng tr? l?i</h2><p>D?ng t?i kho?n A25 Hotel ?? ???c c?p ?? v?o S? b?n giao ca.</p></div>
+    <div className="login-progress" aria-label="Đăng nhập"><i className="active">1</i></div>
+    <div className="auth-card-header"><span>ĐĂNG NHẬP HỆ THỐNG</span><h2>Chào mừng trở lại</h2><p>Dùng tài khoản A25 Hotel đã được cấp để vào Sổ bàn giao ca.</p></div>
     <div className="auth-fields">
       <label>Email<input type="email" value={email} onChange={event=>setEmail(event.target.value)} onKeyDown={event=>{if(event.key==='Enter')void login()}} placeholder="nhanvien@a25hotel.com" autoComplete="username" autoFocus/></label>
-      <label>M?t kh?u<input type="password" value={password} onChange={event=>setPassword(event.target.value)} onKeyDown={event=>{if(event.key==='Enter')void login()}} placeholder="Nh?p m?t kh?u" autoComplete="current-password"/></label>
+      <label>Mật khẩu<input type="password" value={password} onChange={event=>setPassword(event.target.value)} onKeyDown={event=>{if(event.key==='Enter')void login()}} placeholder="Nhập mật khẩu" autoComplete="current-password"/></label>
     </div>
-    <button type="button" className="login-button" disabled={loading} onClick={()=>void login()}>{loading?'?ang ??ng nh?p...':'??ng nh?p'}</button>
+    <button type="button" className="login-button" disabled={loading} onClick={()=>void login()}>{loading?'Đang đăng nhập...':'Đăng nhập'}</button>
     {error&&<p className="auth-error" role="alert"><b>!</b>{error}</p>}
   </section>;
 }
