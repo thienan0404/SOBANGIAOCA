@@ -1,8 +1,7 @@
 'use client';
 
 import {useState} from 'react';
-
-const apiUrl=(process.env.NEXT_PUBLIC_API_URL??'').replace(/\/$/,'');
+import {createClient} from '@/lib/supabase/client';
 
 export function LogoutButton(){
   const[pending,setPending]=useState(false);
@@ -10,13 +9,8 @@ export function LogoutButton(){
   async function handleLogout(){
     if(pending)return;
     setPending(true);
-    const workSessionId=localStorage.getItem('a25.workSessionId')??'';
     try{
-      await fetch(`${apiUrl}/auth/work-sessions/end`,{
-        method:'POST',
-        credentials:'include',
-        headers:{'x-work-session-id':workSessionId}
-      });
+      await createClient().auth.signOut();
     }finally{
       localStorage.removeItem('a25.workSessionId');
       localStorage.removeItem('a25.branchId');
@@ -24,6 +18,9 @@ export function LogoutButton(){
       localStorage.removeItem('a25.employeeCode');
       window.location.replace('/login');
     }
+      localStorage.removeItem('a25.branchName');
+      localStorage.removeItem('a25.branchCode');
+      localStorage.removeItem('a25.currentBranchDevice');
   }
 
   return <button type="button" className="logout-button" aria-label="Đăng xuất khỏi ca làm việc" title="Đăng xuất" disabled={pending} onClick={()=>void handleLogout()}>

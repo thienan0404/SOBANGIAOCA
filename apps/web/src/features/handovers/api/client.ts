@@ -1,13 +1,15 @@
 const base=process.env.NEXT_PUBLIC_API_URL!;
 
 export async function apiRequest<T>(path:string,init?:RequestInit):Promise<T>{
-  const workSessionId=typeof window==='undefined'?'':localStorage.getItem('a25.workSessionId')??'';
+  const{createClient}=await import('@/lib/supabase/client');
+  const{data}=await createClient().auth.getSession();
+  const accessToken=data.session?.access_token;
   const response=await fetch(`${base}${path}`,{
     ...init,
     credentials:'include',
     headers:{
       'content-type':'application/json',
-      'x-work-session-id':workSessionId,
+      ...(accessToken?{authorization:`Bearer ${accessToken}`}:{ }),
       ...init?.headers
     }
   });

@@ -37,3 +37,23 @@ Migration:
 | `pnpm --filter @a25/api build` | **PASS** |
 
 Kết quả tổng thể: **PASS**.
+
+## Normal account login - 20/07/2026
+
+Status: **COMPLETE**
+
+- The web login no longer checks or registers a branch device.
+- Users sign in with their Supabase email and password and enter the application directly.
+- The assigned branch is resolved from the signed-in account membership.
+- Protected web routes and business APIs now validate the Supabase access token.
+- Existing branch device tables and endpoints remain in place for backward compatibility, but they no longer block the web login flow.
+
+Verification:
+
+| Check | Result |
+| --- | --- |
+| `pnpm typecheck` | **PASS** - 8/8 packages |
+| `pnpm lint` | **PASS** - 8/8 packages |
+| API unit tests | **PASS** - 3 suites, 11 tests |
+| `pnpm --filter @a25/web build` | **PASS** |
+| `pnpm --filter @a25/api build` | **PASS** |

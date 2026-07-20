@@ -3,6 +3,7 @@
 import {useEffect,useState} from 'react';
 import {usePathname} from 'next/navigation';
 import {AppShell} from '@/components/layout/app-shell';
+import {createClient} from '@/lib/supabase/client';
 
 export default function ProtectedLayout({children}:{children:React.ReactNode}){
   const pathname=usePathname();
@@ -10,9 +11,9 @@ export default function ProtectedLayout({children}:{children:React.ReactNode}){
 
   useEffect(()=>{
     let active=true;
-    queueMicrotask(()=>{
+    void createClient().auth.getSession().then(({data})=>{
       if(!active)return;
-      if(localStorage.getItem('a25.workSessionId'))setReady(true);
+      if(data.session)setReady(true);
       else window.location.replace(`/login?next=${encodeURIComponent(pathname)}`);
     });
     return()=>{active=false};
