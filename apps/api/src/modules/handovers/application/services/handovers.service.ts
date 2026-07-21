@@ -229,14 +229,18 @@ export class HandoversService {
           requestId,
         },
       }),
-      this.prisma.outboxEvent.create({
-        data: {
+      this.prisma.outboxEvent.upsert({
+        where: {
+          idempotencyKey: `handover.${next.toLowerCase()}:${id}:${nextVersion}`,
+        },
+        create: {
           aggregateType: "HANDOVER",
           aggregateId: id,
           eventType: `handover.${next.toLowerCase()}`,
           payload: { handoverId: id, branchId: handover.branchId },
           idempotencyKey: `handover.${next.toLowerCase()}:${id}:${nextVersion}`,
         },
+        update: {},
       }),
     ]);
     return updated;
