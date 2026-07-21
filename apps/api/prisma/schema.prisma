@@ -76,7 +76,17 @@ authenticatedWorkSessions WorkSession[] @relation("BranchAccountWorkSessions")
 createdHandovers Handover[] @relation("HandoverCreator")
 participants HandoverParticipant[]
 registeredDevices BranchDevice[] @relation("RegisteredBranchDevices")
+employeeCredential EmployeeCredential?
 @@map("profiles")
+}
+model EmployeeCredential {
+profileId String @id @map("profile_id") @db.Uuid
+username String @unique
+passwordHash String @map("password_hash")
+createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+profile Profile @relation(fields:[profileId],references:[id],onDelete:Cascade)
+@@map("employee_credentials")
 }
 model BranchDevice {
 id String @id @default(uuid()) @db.Uuid
