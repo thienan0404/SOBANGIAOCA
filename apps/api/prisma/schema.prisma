@@ -17,18 +17,24 @@ CONFIRMED
 COMPLETED
 CANCELLED
 OVERDUE
+
+@@map("handover_status")
 }
 enum ParticipantType {
 GIVER
 RECEIVER
 SUPERVISOR
 APPROVER
+
+@@map("participant_type")
 }
 enum ItemPriority {
 LOW
 NORMAL
 HIGH
 URGENT
+
+@@map("item_priority")
 }
 
 model Organization {
