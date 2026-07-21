@@ -54,7 +54,7 @@ export function AccountLoginForm(){
 
   return <section className="auth-card employee-login">
     <div className="login-progress" aria-label="Đăng nhập"><i className="active">1</i></div>
-    <div className="auth-card-header"><span>ĐĂNG NHẬP HỆ THỐNG</span><h2>Chào mừng trở lại</h2><p>Dùng tài khoản A25 Hotel đã được cấp để vào Sổ bàn giao ca.</p></div>
+    <div className="auth-card-header"><span>ĐĂNG NHẬP HỆ THỐNG</span><h2>Chào mừng trở lại</h2></div>
     <div className="auth-fields">
       <label>Email<input type="email" value={email} onChange={event=>setEmail(event.target.value)} onKeyDown={event=>{if(event.key==='Enter')void login()}} placeholder="nhanvien@a25hotel.com" autoComplete="username" autoFocus/></label>
       <label>Mật khẩu<input type="password" value={password} onChange={event=>setPassword(event.target.value)} onKeyDown={event=>{if(event.key==='Enter')void login()}} placeholder="Nhập mật khẩu" autoComplete="current-password"/></label>
