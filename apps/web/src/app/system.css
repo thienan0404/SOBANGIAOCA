@@ -125,3 +125,6 @@ body :where(button,input,textarea,select){font-family:var(--font-ui);font-synthe
   :root{--type-display:1.8125rem;--type-page-title:1.375rem}
   .bottom-nav a small,.handover-app .bottom-nav a small{font-size:.5625rem}
 }
+@media(max-width:520px){
+  .handover-topbar .live-status{display:none}
+}
