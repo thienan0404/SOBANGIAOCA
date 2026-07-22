@@ -51,7 +51,20 @@ export class HandoversService {
       : memberships.map((x) => x.branchId);
     return this.prisma.handover.findMany({
       where: { branchId: { in: branchIds }, status: query.status },
-      include: { participants: { include: { user: true } }, items: true },
+      select: {
+        id: true,
+        code: true,
+        status: true,
+        branchId: true,
+        createdAt: true,
+        submittedAt: true,
+        participants: {
+          select: {
+            participantType: true,
+            user: {select: {id: true, fullName: true}},
+          },
+        },
+      },
       orderBy: { createdAt: "desc" },
       skip: ((query.page ?? 1) - 1) * (query.pageSize ?? 20),
       take: query.pageSize ?? 20,

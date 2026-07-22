@@ -46,6 +46,11 @@ async function rpcData<T>(name:string,args?:Record<string,unknown>):Promise<T>{
   return data as T;
 }
 
+function warmApi(){
+  const apiUrl=process.env.NEXT_PUBLIC_API_URL;
+  if(apiUrl)void fetch(`${apiUrl}/health`,{cache:'no-store'}).catch(()=>undefined);
+}
+
 export function LoginForm(){
   const[step,setStep]=useState<Step>('branch');
   const[branchEmail,setBranchEmail]=useState('');
@@ -73,6 +78,7 @@ export function LoginForm(){
   }
 
   useEffect(()=>{
+    warmApi();
     void createClient().auth.getSession().then(({data})=>{
       if(data.session)void loadBranchContext().catch(()=>undefined);
     });
