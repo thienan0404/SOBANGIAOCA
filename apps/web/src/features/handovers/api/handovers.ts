@@ -1,4 +1,5 @@
 import type {CreateHandoverRequest,HandoverSummary,HandoverStatus,ParticipantType} from '@a25/contracts';
+import {createClient} from '@/lib/supabase/client';
 import {apiRequest} from './client';
 
 export type HandoverParticipant={id:string;participantType:ParticipantType;confirmedAt?:string|null;user:{id:string;fullName:string;employeeCode?:string|null}};
@@ -6,15 +7,44 @@ export type HandoverDetail=HandoverSummary&{notes?:string;createdAt?:string;subm
 export type ParticipantHistory={id:string;participantType:ParticipantType;assignedAt:string;confirmedAt?:string|null;user:{id:string;fullName:string};handover:{id:string;code:string;status:HandoverStatus}};
 export type EmployeeOption={id:string;fullName:string;employeeCode:string|null;email:string};
 export type ShiftOption={id:string;shiftCode:string;startsAt:string;endsAt:string;branchId:string};
-type HandoverRow={id:string;code:string;status:HandoverStatus;branchId:string;createdAt:string;submittedAt?:string|null;participants:Array<{participantType:ParticipantType;user:{id:string;fullName:string}}>};
+type DirectHandoverRow={
+  id:string;
+  code:string;
+  status:HandoverStatus;
+  branch_id:string;
+  created_at:string;
+  submitted_at:string|null;
+  participants:Array<{
+    participant_type:ParticipantType;
+    user:{id:string;full_name:string}|null;
+  }>;
+};
 
 async function listHandovers(branchId?:string):Promise<HandoverSummary[]>{
-  const query=branchId?`?branchId=${encodeURIComponent(branchId)}`:'';
-  const rows=await apiRequest<HandoverRow[]>(`/handovers${query}`);
+  let query=createClient()
+    .from('handovers')
+    .select(`
+      id,
+      code,
+      status,
+      branch_id,
+      created_at,
+      submitted_at,
+      participants:handover_participants(
+        participant_type,
+        user:profiles!handover_participants_user_id_fkey(id,full_name)
+      )
+    `)
+    .order('created_at',{ascending:false})
+    .limit(20);
+  if(branchId)query=query.eq('branch_id',branchId);
+  const{data,error}=await query;
+  if(error)throw new Error('Không thể tải danh sách bàn giao');
+  const rows=data as unknown as DirectHandoverRow[];
   return rows.map(row=>{
-    const giver=row.participants.find(item=>item.participantType==='GIVER')?.user;
-    const receiver=row.participants.find(item=>item.participantType==='RECEIVER')?.user;
-    return{id:row.id,code:row.code,status:row.status,branchId:row.branchId,giver:{id:giver?.id??'',name:giver?.fullName??'Người giao'},receiver:{id:receiver?.id??'',name:receiver?.fullName??'Người nhận'},createdAt:row.createdAt,...(row.submittedAt?{submittedAt:row.submittedAt}:{})};
+    const giver=row.participants.find(item=>item.participant_type==='GIVER')?.user;
+    const receiver=row.participants.find(item=>item.participant_type==='RECEIVER')?.user;
+    return{id:row.id,code:row.code,status:row.status,branchId:row.branch_id,giver:{id:giver?.id??'',name:giver?.full_name??'Người giao'},receiver:{id:receiver?.id??'',name:receiver?.full_name??'Người nhận'},createdAt:row.created_at,...(row.submitted_at?{submittedAt:row.submitted_at}:{})};
   });
 }
 
