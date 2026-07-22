@@ -40,12 +40,16 @@ export function LogoutButton(){
     }
   }
 
-  return <div className="logout-actions" aria-label="Tùy chọn đăng xuất">
-    <button type="button" className="logout-button employee-logout" aria-label="Đăng xuất nhân viên, giữ nguyên tài khoản chi nhánh" title="Đăng xuất nhân viên, giữ nguyên chi nhánh" disabled={Boolean(pending)} onClick={()=>void handleEmployeeLogout()}>
-      <span>{pending==='employee'?'Đang thoát…':'Thoát NV'}</span><b aria-hidden="true">NV</b>
+  return <div className="account-logout-actions" aria-label="Tùy chọn đăng xuất">
+    <button type="button" className="account-logout-button employee-logout" disabled={Boolean(pending)} onClick={()=>void handleEmployeeLogout()}>
+      <span className="account-action-icon" aria-hidden="true">NV</span>
+      <span className="account-action-copy"><strong>{pending==='employee'?'Đang đăng xuất…':'Đăng xuất nhân viên'}</strong><small>Đổi người làm ca, vẫn giữ đăng nhập chi nhánh</small></span>
+      <b aria-hidden="true">›</b>
     </button>
-    <button type="button" className="logout-button branch-logout" aria-label="Đăng xuất tài khoản chi nhánh và nhân viên" title="Đăng xuất cả tài khoản chi nhánh" disabled={Boolean(pending)} onClick={()=>void handleBranchLogout()}>
-      <span>{pending==='branch'?'Đang thoát…':'Thoát CN'}</span><b aria-hidden="true">CN</b>
+    <button type="button" className="account-logout-button branch-logout" disabled={Boolean(pending)} onClick={()=>void handleBranchLogout()}>
+      <span className="account-action-icon" aria-hidden="true">CN</span>
+      <span className="account-action-copy"><strong>{pending==='branch'?'Đang đăng xuất…':'Đăng xuất chi nhánh'}</strong><small>Thoát toàn bộ tài khoản trên thiết bị này</small></span>
+      <b aria-hidden="true">›</b>
     </button>
   </div>;
 }

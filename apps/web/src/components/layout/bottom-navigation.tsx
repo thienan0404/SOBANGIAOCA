@@ -7,7 +7,8 @@ const nav=[
   {icon:'⌂',label:'Tổng quan',href:'/dashboard'},
   {icon:'▤',label:'Chi tiết',href:'/handovers'},
   {icon:'☑',label:'Công việc',href:'/handovers/pending-receive'},
-  {icon:'✎',label:'Ký nhận',href:'/handovers/participants'}
+  {icon:'✎',label:'Ký nhận',href:'/handovers/participants'},
+  {icon:'⚙',label:'Cài đặt',href:'/settings'}
 ] as const;
 
 export function BottomNavigation(){
