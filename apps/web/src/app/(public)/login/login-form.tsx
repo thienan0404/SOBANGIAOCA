@@ -7,7 +7,9 @@ type Step='branch'|'employee'|'shift';
 type Branch={id:string;name:string;code:string;address:string|null};
 type Assignment={
   id:string;
-  assignmentType:string;
+  canConfirm:boolean;
+  availability:'AVAILABLE'|'UPCOMING'|'ENDED';
+  handover:{toShift:string;startsAt:string;endsAt:string};
   shift:{id:string;shiftCode:string;startsAt:string;endsAt:string;branch:Branch};
 };
 type BranchContext={
@@ -25,16 +27,13 @@ function formatShift(value:string){
   return new Intl.DateTimeFormat('vi-VN',{hour:'2-digit',minute:'2-digit'}).format(new Date(value));
 }
 
-function assignmentLabel(value:string){
-  return({RECEPTIONIST:'Lễ tân',SHIFT_LEADER:'Trưởng ca',SUPERVISOR:'Giám sát'} as Record<string,string>)[value]??value;
-}
-
 const rpcMessages:Record<string,string>={
   'Phien dang nhap chi nhanh khong hop le':'Phiên đăng nhập chi nhánh không hợp lệ',
   'Tai khoan phai duoc gan voi dung mot chi nhanh':'Tài khoản phải được gán với đúng một chi nhánh',
   'Tai khoan nhan vien hoac mat khau chua chinh xac':'Tài khoản nhân viên hoặc mật khẩu chưa chính xác',
   'Nhan vien dang co mot phien lam viec khac':'Nhân viên đang có một phiên làm việc khác',
-  'Khong tim thay lich phan ca phu hop voi gio thuc te':'Không tìm thấy lịch phân ca phù hợp với giờ thực tế'
+  'Khong tim thay lich phan ca phu hop voi gio thuc te':'Không tìm thấy lịch phân ca phù hợp với giờ thực tế',
+  'Ca lam viec chua den gio hoac da ket thuc':'Ca làm việc chưa đến giờ hoặc đã kết thúc'
 };
 
 async function rpcData<T>(name:string,args?:Record<string,unknown>):Promise<T>{
@@ -191,11 +190,11 @@ export function LoginForm(){
 
     {step==='shift'&&employeeContext&&<>
       <button type="button" className="login-back" onClick={changeEmployee}>← Đổi nhân viên</button>
-      <div className="auth-card-header"><span>XÁC NHẬN CA LÀM VIỆC</span><h2>Xin chào, {employeeContext.employee.fullName}</h2><p>Lịch phân ca được đối chiếu tại {employeeContext.branch.name}.</p></div>
+      <div className="auth-card-header"><span>XÁC NHẬN CA LÀM VIỆC</span><h2>Xin chào, {employeeContext.employee.fullName}</h2><p>Chọn ca làm việc tại {employeeContext.branch.name}.</p></div>
       <div className="shift-options">
-        {employeeContext.assignments.map(item=><article key={item.id}><div><span>{item.shift.shiftCode}</span><strong>{formatShift(item.shift.startsAt)} – {formatShift(item.shift.endsAt)}</strong><small>{assignmentLabel(item.assignmentType)}</small></div><button type="button" disabled={loading} onClick={()=>void confirmShift(item)}>{loading?'Đang tạo phiên...':'Xác nhận ca'}</button></article>)}
+        {employeeContext.assignments.map(item=><article className={item.canConfirm?'':'unavailable'} key={item.id}><div><span>{item.shift.shiftCode}</span><strong>{formatShift(item.shift.startsAt)} – {formatShift(item.shift.endsAt)}</strong><small>Giao {item.handover.toShift}: {formatShift(item.handover.startsAt)} – {formatShift(item.handover.endsAt)}</small></div><button type="button" disabled={loading||!item.canConfirm} onClick={()=>void confirmShift(item)}>{loading?'Đang tạo phiên...':item.canConfirm?'Xác nhận ca':item.availability==='UPCOMING'?'Chưa đến giờ':'Ca đã kết thúc'}</button></article>)}
       </div>
-      {!employeeContext.assignments.length&&<div className="login-notice"><strong>Chưa có ca phù hợp</strong><span>Không tìm thấy lịch đang diễn ra hoặc bắt đầu trong vòng 60 phút tới.</span></div>}
+      {!employeeContext.assignments.length&&<div className="login-notice"><strong>Chưa tải được danh sách ca</strong><span>Vui lòng tải lại trang sau khi dữ liệu ca được đồng bộ.</span></div>}
     </>}
 
     {error&&<p className="auth-error" role="alert"><b>!</b>{error}</p>}
