@@ -7,6 +7,20 @@ export type HandoverDetail=HandoverSummary&{notes?:string;createdAt?:string;subm
 export type ParticipantHistory={id:string;participantType:ParticipantType;assignedAt:string;confirmedAt?:string|null;user:{id:string;fullName:string};handover:{id:string;code:string;status:HandoverStatus}};
 export type EmployeeOption={id:string;fullName:string;employeeCode:string|null;email:string};
 export type ShiftOption={id:string;shiftCode:string;startsAt:string;endsAt:string;branchId:string};
+export type HandoverFormContext={employees:EmployeeOption[];currentShift:ShiftOption|null};
+type CachedHandoverFormContext=HandoverFormContext&{cachedAt:number};
+const formContextTtlMs=2*60*1000;
+const formContextKey=(branchId:string)=>`a25.handoverFormContext.${branchId}`;
+const formContextRequests=new Map<string,Promise<HandoverFormContext>>();
+
+export function readHandoverFormContext(branchId:string):HandoverFormContext|null{
+  if(typeof window==='undefined')return null;
+  try{
+    const cached=JSON.parse(sessionStorage.getItem(formContextKey(branchId))??'null') as CachedHandoverFormContext|null;
+    if(!cached||Date.now()-cached.cachedAt>formContextTtlMs)return null;
+    return{employees:cached.employees,currentShift:cached.currentShift};
+  }catch{return null}
+}
 type DirectHandoverRow={
   id:string;
   code:string;
@@ -58,5 +72,21 @@ export const handoverApi={
   check:(id:string,code:string)=>apiRequest<unknown>(`/handovers/${id}/checklist/${code}`,{method:'POST'}),
   participants:()=>apiRequest<ParticipantHistory[]>('/handover-participants'),
   employees:(branchId:string)=>apiRequest<EmployeeOption[]>(`/employees?branchId=${encodeURIComponent(branchId)}`),
-  currentShift:(branchId:string)=>apiRequest<ShiftOption|null>(`/shifts/current?branchId=${encodeURIComponent(branchId)}`)
+  currentShift:(branchId:string)=>apiRequest<ShiftOption|null>(`/shifts/current?branchId=${encodeURIComponent(branchId)}`),
+  formContext:async(branchId:string,forceRefresh=false):Promise<HandoverFormContext>=>{
+    const cached=readHandoverFormContext(branchId);
+    if(cached&&!forceRefresh)return cached;
+    const pending=formContextRequests.get(branchId);
+    if(pending)return pending;
+    const request=Promise.all([
+      apiRequest<EmployeeOption[]>(`/employees?branchId=${encodeURIComponent(branchId)}`),
+      apiRequest<ShiftOption|null>(`/shifts/current?branchId=${encodeURIComponent(branchId)}`)
+    ]).then(([employees,currentShift])=>{
+      const context={employees,currentShift};
+      if(typeof window!=='undefined')sessionStorage.setItem(formContextKey(branchId),JSON.stringify({...context,cachedAt:Date.now()}));
+      return context;
+    }).finally(()=>formContextRequests.delete(branchId));
+    formContextRequests.set(branchId,request);
+    return request;
+  }
 };

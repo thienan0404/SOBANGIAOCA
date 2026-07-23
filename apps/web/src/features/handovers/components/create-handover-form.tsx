@@ -2,7 +2,7 @@
 
 import {useEffect,useMemo,useState} from 'react';
 import {useRouter} from 'next/navigation';
-import {handoverApi,type EmployeeOption,type ShiftOption} from '../api/handovers';
+import {handoverApi,readHandoverFormContext,type EmployeeOption,type HandoverFormContext,type ShiftOption} from '../api/handovers';
 import {useCreateHandover} from '../hooks/use-handovers';
 import {emptyFinanceEntry,financeTotals,formatMoney,formatMoneyInput,serializeFinance,type FinanceEntry} from '../lib/finance';
 
@@ -28,18 +28,24 @@ export function CreateHandoverForm(){
 
   useEffect(()=>{
     let active=true;
+    let usedCachedContext=false;
     void(async()=>{
       try{
         const device=JSON.parse(localStorage.getItem('a25.currentBranchDevice')??'null');
         const id=localStorage.getItem('a25.branchId')||device?.branch?.id||'';
         if(!id)throw new Error('Thiết bị chưa có thông tin chi nhánh');
-        setBranchId(id);setBranchName(device?.branch?.name||'Chi nhánh đang làm việc');setGiverName(localStorage.getItem('a25.employeeName')||'Nhân viên lễ tân');
-        const[staff,currentShift]=await Promise.all([handoverApi.employees(id),handoverApi.currentShift(id)]);
+        setBranchId(id);setBranchName(localStorage.getItem('a25.branchName')||device?.branch?.name||'Chi nhánh đang làm việc');setGiverName(localStorage.getItem('a25.employeeName')||'Nhân viên lễ tân');
+        const applyContext=(context:HandoverFormContext)=>{
+          const currentCode=localStorage.getItem('a25.employeeCode');
+          const receivers=context.employees.filter(item=>!currentCode||item.employeeCode!==currentCode);
+          setEmployees(receivers);setReceiverId(value=>value||receivers[0]?.id||'');setShift(context.currentShift);
+        };
+        const cached=readHandoverFormContext(id);
+        if(cached){usedCachedContext=true;applyContext(cached);setLoading(false)}
+        const context=await handoverApi.formContext(id,Boolean(cached));
         if(!active)return;
-        const currentCode=localStorage.getItem('a25.employeeCode');
-        const receivers=staff.filter(item=>!currentCode||item.employeeCode!==currentCode);
-        setEmployees(receivers);setReceiverId(receivers[0]?.id??'');setShift(currentShift);
-      }catch(cause){if(active)setError(cause instanceof Error?cause.message:'Không thể tải dữ liệu ca')}
+        applyContext(context);
+      }catch(cause){if(active&&!usedCachedContext)setError(cause instanceof Error?cause.message:'Không thể tải dữ liệu ca')}
       finally{if(active)setLoading(false)}
     })();
     return()=>{active=false};
@@ -69,13 +75,12 @@ export function CreateHandoverForm(){
     }catch(cause){setError(cause instanceof Error?cause.message:'Không thể tạo phiếu bàn giao')}
   }
 
-  if(loading)return <div className="ops-loading"><i/><p>Đang chuẩn bị biểu mẫu ca...</p></div>;
   return <div className="handover-form-page">
     <header className="inner-page-title"><button type="button" onClick={()=>router.back()}>‹</button><div><h1>Giao ca lễ tân</h1><p>{shift?.shiftCode??'Ca hiện tại'} · {branchName}</p></div></header>
 
-    <section className="handover-meta-card"><div><span>⌂</span><small>CHI NHÁNH</small><strong>{branchName}</strong></div><div><span>▣</span><small>CA LÀM VIỆC</small><strong>{shift?`${new Date(shift.startsAt).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})} – ${new Date(shift.endsAt).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}`:'Chưa có ca phù hợp'}</strong></div></section>
+    <section className="handover-meta-card"><div><span>⌂</span><small>CHI NHÁNH</small><strong>{branchName}</strong></div><div><span>▣</span><small>CA LÀM VIỆC</small><strong>{loading?'Đang tải thông tin ca...':shift?`${new Date(shift.startsAt).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})} – ${new Date(shift.endsAt).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}`:'Chưa có ca phù hợp'}</strong></div></section>
 
-    <section className="handover-section participants-section"><h2>Người giao và người nhận</h2><div className="person-row"><span className="person-avatar">A25</span><div><small>NGƯỜI GIAO</small><strong>{giverName}</strong><p>Lễ tân đang trực</p></div><i className="online-dot"/></div><label>Người nhận bàn giao<select value={receiverId} onChange={event=>setReceiverId(event.target.value)}><option value="">Chọn nhân viên ca sau</option>{employees.map(item=><option value={item.id} key={item.id}>{item.employeeCode?`${item.employeeCode} · `:''}{item.fullName}</option>)}</select></label></section>
+    <section className="handover-section participants-section"><h2>Người giao và người nhận</h2><div className="person-row"><span className="person-avatar">A25</span><div><small>NGƯỜI GIAO</small><strong>{giverName}</strong><p>Lễ tân đang trực</p></div><i className="online-dot"/></div><label>Người nhận bàn giao<select value={receiverId} disabled={loading&&!employees.length} onChange={event=>setReceiverId(event.target.value)}><option value="">{loading?'Đang tải danh sách nhân viên...':'Chọn nhân viên ca sau'}</option>{employees.map(item=><option value={item.id} key={item.id}>{item.employeeCode?`${item.employeeCode} · `:''}{item.fullName}</option>)}</select></label></section>
 
     <section className="handover-section finance-section">
       <div className="section-number">I</div><h2>Tài chính – quỹ</h2>
@@ -99,6 +104,6 @@ export function CreateHandoverForm(){
     <section className="handover-section"><div className="section-number">IV</div><h2>Công việc bàn giao khác</h2><div className="task-editor">{tasks.map((task,index)=><article key={index}><div className="task-head"><strong>Công việc {index+1}</strong>{tasks.length>1&&<button type="button" onClick={()=>setTasks(items=>items.filter((_,i)=>i!==index))}>×</button>}</div><input value={task.title} onChange={event=>setTasks(items=>items.map((item,i)=>i===index?{...item,title:event.target.value}:item))} placeholder="Tên công việc"/><textarea value={task.details} onChange={event=>setTasks(items=>items.map((item,i)=>i===index?{...item,details:event.target.value}:item))} placeholder="Nội dung cần ca sau tiếp tục..."/><div className="task-options"><input value={task.roomNumber} onChange={event=>setTasks(items=>items.map((item,i)=>i===index?{...item,roomNumber:event.target.value}:item))} placeholder="Phòng (nếu có)"/><select value={task.priority} onChange={event=>setTasks(items=>items.map((item,i)=>i===index?{...item,priority:event.target.value as Task['priority']}:item))}><option value="LOW">Thấp</option><option value="NORMAL">Trung bình</option><option value="HIGH">Cao</option><option value="URGENT">Khẩn cấp</option></select></div></article>)}</div><button type="button" className="outline-add" onClick={()=>setTasks(items=>[...items,{...emptyTask}])}>＋ Thêm công việc</button></section>
 
     {error&&<p className="handover-form-error" role="alert">! {error}</p>}
-    <button type="button" className="handover-submit" disabled={mutation.isPending} onClick={()=>void submit()}>{mutation.isPending?'Đang lưu bàn giao...':'Tiếp tục xem tóm tắt'}</button>
+    <button type="button" className="handover-submit" disabled={loading||mutation.isPending} onClick={()=>void submit()}>{loading?'Đang đồng bộ thông tin ca...':mutation.isPending?'Đang lưu bàn giao...':'Tiếp tục xem tóm tắt'}</button>
   </div>;
 }
