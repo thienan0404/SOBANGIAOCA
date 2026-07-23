@@ -4,6 +4,7 @@ import {Suspense} from 'react';
 import {useRouter,useSearchParams} from 'next/navigation';
 import {useHandover,handoverApi} from '@/features/handovers';
 import {useQueryClient} from '@tanstack/react-query';
+import {financeTotals,formatMoney,parseFinance,type FinanceEntry} from '@/features/handovers/lib/finance';
 
 const statusLabels:Record<string,string>={DRAFT:'Bản nháp',SUBMITTED:'Đã gửi',PENDING_RECEIVER_CONFIRMATION:'Chờ người nhận xác nhận',SUPPLEMENT_REQUESTED:'Cần bổ sung',RESUBMITTED:'Đã gửi lại',CONFIRMED:'Đã xác nhận',COMPLETED:'Hoàn tất',CANCELLED:'Đã hủy',OVERDUE:'Quá hạn'};
 
@@ -17,6 +18,9 @@ function DetailContent(){
   if(error||!data)return <div className="empty">Không tìm thấy phiếu bàn giao</div>;
 
   const finance=data.items?.find(item=>item.category==='FINANCE');
+  const financeData=finance?parseFinance(finance.details):null;
+  const financeEntries:FinanceEntry[]=financeData?.entries.map((item,index)=>({...item,id:String(index),amount:String(item.amount)}))??[];
+  const financeSummary=financeData?financeTotals(String(financeData.fixedFund),financeEntries):null;
   const hotel=data.items?.find(item=>item.category==='HOTEL_STATUS');
   const tasks=data.items?.filter(item=>item.category==='TASK')??[];
   const giver=data.participants?.find(item=>item.participantType==='GIVER');
@@ -42,7 +46,7 @@ function DetailContent(){
 
     <section className="handover-section summary-people"><h2>Người giao → Người nhận</h2><div className="people-flow"><div><span className="person-avatar">A25</span><strong>{giver?.user.fullName||'Người giao'}</strong><small>Người giao</small></div><b>→</b><div><span className="person-avatar blue-avatar">A25</span><strong>{receiver?.user.fullName||'Người nhận'}</strong><small>Người nhận</small></div></div></section>
 
-    {finance&&<section className="handover-section detail-block"><div className="section-number">I</div><h2>Tài chính – quỹ</h2><div className="detail-lines">{finance.details.split('\n').map((line,index)=>{const[label,value]=line.split(':');return <div key={index}><span>{label}</span><strong>{value?.trim()} ₫</strong></div>})}</div></section>}
+    {finance&&<section className="handover-section detail-block"><div className="section-number">I</div><h2>Tài chính – quỹ</h2>{financeData&&financeSummary?<><div className="fixed-fund-summary"><span>Quỹ cố định đầu ca</span><strong>{formatMoney(financeData.fixedFund)} ₫</strong></div><div className="finance-detail-list">{financeData.entries.length?financeData.entries.map((entry,index)=><article key={index}><div><span className={entry.type==='INCOME'?'income-badge':'expense-badge'}>{entry.type==='INCOME'?'Thu':'Chi'}</span><strong>{entry.content||'Khoản phát sinh'}</strong><small>{entry.paymentMethod==='CASH'?'Tiền mặt':'Chuyển khoản'}</small></div><b className={entry.type==='INCOME'?'income-text':'expense-text'}>{entry.type==='INCOME'?'+':'−'}{formatMoney(entry.amount)} ₫</b>{entry.reason&&<p><span>Lý do:</span> {entry.reason}</p>}</article>):<p className="section-note">Không có khoản thu hoặc chi phát sinh.</p>}</div><div className="detail-finance-totals"><div><span>Tổng thu</span><strong className="income-text">{formatMoney(financeSummary.totalIncome)} ₫</strong></div><div><span>Tổng chi</span><strong className="expense-text">{formatMoney(financeSummary.totalExpense)} ₫</strong></div><div><span>Tiền mặt phát sinh</span><strong>{formatMoney(financeSummary.cashTotal)} ₫</strong></div><div><span>Chuyển khoản phát sinh</span><strong>{formatMoney(financeSummary.transferTotal)} ₫</strong></div><div><span>Dư cuối</span><strong>{formatMoney(financeSummary.endingBalance)} ₫</strong></div></div></>:<div className="detail-lines">{finance.details.split('\n').map((line,index)=>{const[label,...rest]=line.split(':');return <div key={index}><span>{label}</span><strong>{rest.join(':').trim()} ₫</strong></div>})}</div>}</section>}
 
     {hotel&&<section className="handover-section detail-block"><div className="section-number">II</div><h2>Tình hình khách sạn</h2><div className="detail-lines hotel-lines">{hotel.details.split('\n').map((line,index)=>{const[label,...rest]=line.split(':');return <div key={index}><span>{label}</span><strong>{rest.join(':').trim()}</strong></div>})}</div></section>}
 

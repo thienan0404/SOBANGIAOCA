@@ -4,9 +4,9 @@ import {useEffect,useMemo,useState} from 'react';
 import {useRouter} from 'next/navigation';
 import {handoverApi,type EmployeeOption,type ShiftOption} from '../api/handovers';
 import {useCreateHandover} from '../hooks/use-handovers';
+import {emptyFinanceEntry,financeTotals,formatMoney,serializeFinance,type FinanceEntry} from '../lib/finance';
 
 type Task={title:string;details:string;priority:'LOW'|'NORMAL'|'HIGH'|'URGENT';roomNumber:string};
-type Finance={fixedFund:string;cashIncome:string;cashExpense:string;transfer:string;endingBalance:string};
 type Hotel={minibar:string;keys:string;phone:string;vacantRooms:string;occupiedRooms:string;stayingGuests:string;guestNotes:string;lostFound:string;incidents:string};
 const emptyTask:Task={title:'',details:'',priority:'NORMAL',roomNumber:''};
 
@@ -20,7 +20,8 @@ export function CreateHandoverForm(){
   const[receiverId,setReceiverId]=useState('');
   const[giverName,setGiverName]=useState('Nhân viên lễ tân');
   const[tasks,setTasks]=useState<Task[]>([{...emptyTask}]);
-  const[finance,setFinance]=useState<Finance>({fixedFund:'',cashIncome:'',cashExpense:'',transfer:'',endingBalance:''});
+  const[fixedFund,setFixedFund]=useState('');
+  const[financeEntries,setFinanceEntries]=useState<FinanceEntry[]>([emptyFinanceEntry()]);
   const[hotel,setHotel]=useState<Hotel>({minibar:'Đủ',keys:'Đủ',phone:'Đủ',vacantRooms:'',occupiedRooms:'',stayingGuests:'',guestNotes:'Không',lostFound:'Không',incidents:''});
   const[loading,setLoading]=useState(true);
   const[error,setError]=useState('');
@@ -44,17 +45,13 @@ export function CreateHandoverForm(){
     return()=>{active=false};
   },[]);
 
-  const financeSummary=useMemo(()=>[
-    `Quỹ cố định: ${finance.fixedFund||'0'}`,
-    `Tổng thu: ${finance.cashIncome||'0'}`,
-    `Tổng chi: ${finance.cashExpense||'0'}`,
-    `Chuyển khoản: ${finance.transfer||'0'}`,
-    `Dư cuối: ${finance.endingBalance||'0'}`
-  ].join('\n'),[finance]);
+  const totals=useMemo(()=>financeTotals(fixedFund,financeEntries),[fixedFund,financeEntries]);
 
   async function submit(){
     if(!branchId||!shift?.id){setError('Không tìm thấy ca làm việc đang hoạt động');return}
     if(!receiverId){setError('Vui lòng chọn nhân viên nhận bàn giao');return}
+    const incompleteFinanceEntry=financeEntries.find(item=>(item.content.trim()||item.amount.trim()||item.reason.trim())&&(!item.content.trim()||!item.amount.trim()||!item.reason.trim()));
+    if(incompleteFinanceEntry){setError('Vui lòng nhập đủ nội dung, số tiền và lý do cho từng khoản thu hoặc chi');return}
     const workItems=tasks.filter(item=>item.title.trim()&&item.details.trim());
     setError('');
     try{
@@ -62,7 +59,7 @@ export function CreateHandoverForm(){
         branchId,shiftInstanceId:shift.id,receiverId,
         notes:`Bàn giao ${shift.shiftCode} tại ${branchName}`,
         items:[
-          {title:'Tài chính - quỹ',details:financeSummary,category:'FINANCE',priority:'HIGH'},
+          {title:'Tài chính - quỹ',details:serializeFinance(fixedFund,financeEntries),category:'FINANCE',priority:'HIGH'},
           {title:'Tình hình khách sạn',details:[`Kho minibar: ${hotel.minibar}`,`Kho ký gửi: ${hotel.keys}`,`Sạc điện thoại/đàm: ${hotel.phone}`,`Phòng trống: ${hotel.vacantRooms||'0'}`,`Phòng có khách: ${hotel.occupiedRooms||'0'}`,`Khách lưu trú: ${hotel.stayingGuests||'0'}`,`Khách cần lưu ý: ${hotel.guestNotes||'Không'}`,`Tài sản khách: ${hotel.lostFound||'Không'}`,`Phát sinh khác: ${hotel.incidents||'Không'}`].join('\n'),category:'HOTEL_STATUS',priority:'NORMAL'},
           ...workItems.map(item=>({title:item.title,details:item.details,category:'TASK',priority:item.priority,roomNumber:item.roomNumber||undefined}))
         ]
@@ -80,7 +77,20 @@ export function CreateHandoverForm(){
 
     <section className="handover-section participants-section"><h2>Người giao và người nhận</h2><div className="person-row"><span className="person-avatar">A25</span><div><small>NGƯỜI GIAO</small><strong>{giverName}</strong><p>Lễ tân đang trực</p></div><i className="online-dot"/></div><label>Người nhận bàn giao<select value={receiverId} onChange={event=>setReceiverId(event.target.value)}><option value="">Chọn nhân viên ca sau</option>{employees.map(item=><option value={item.id} key={item.id}>{item.employeeCode?`${item.employeeCode} · `:''}{item.fullName}</option>)}</select></label></section>
 
-    <section className="handover-section"><div className="section-number">I</div><h2>Tài chính – quỹ</h2><p className="section-note">Đối chiếu và nhập số tiền thực tế cuối ca.</p><div className="finance-grid">{([['fixedFund','Quỹ cố định'],['cashIncome','Tổng thu'],['cashExpense','Tổng chi'],['transfer','Chuyển khoản'],['endingBalance','Dư cuối']] as Array<[keyof Finance,string]>).map(([key,label])=><label key={key}>{label}<div><input inputMode="decimal" value={finance[key]} onChange={event=>setFinance(value=>({...value,[key]:event.target.value}))} placeholder="0"/><span>₫</span></div></label>)}</div></section>
+    <section className="handover-section finance-section">
+      <div className="section-number">I</div><h2>Tài chính – quỹ</h2>
+      <p className="section-note">Ghi rõ từng khoản thu, chi, số tiền và lý do phát sinh.</p>
+      <label className="fixed-fund-field">Quỹ cố định đầu ca<div className="money-input"><input inputMode="numeric" value={fixedFund} onChange={event=>setFixedFund(event.target.value)} placeholder="0"/><span>₫</span></div></label>
+      <div className="finance-entry-list">{financeEntries.map((entry,index)=><article className={`finance-entry ${entry.type==='INCOME'?'income':'expense'}`} key={entry.id}>
+        <div className="finance-entry-head"><strong>Khoản phát sinh {index+1}</strong>{financeEntries.length>1&&<button type="button" aria-label={`Xóa khoản ${index+1}`} onClick={()=>setFinanceEntries(items=>items.filter(item=>item.id!==entry.id))}>×</button>}</div>
+        <div className="finance-entry-grid"><label>Loại<select value={entry.type} onChange={event=>setFinanceEntries(items=>items.map(item=>item.id===entry.id?{...item,type:event.target.value as FinanceEntry['type']}:item))}><option value="INCOME">Thu</option><option value="EXPENSE">Chi</option></select></label><label>Hình thức<select value={entry.paymentMethod} onChange={event=>setFinanceEntries(items=>items.map(item=>item.id===entry.id?{...item,paymentMethod:event.target.value as FinanceEntry['paymentMethod']}:item))}><option value="CASH">Tiền mặt</option><option value="TRANSFER">Chuyển khoản</option></select></label></div>
+        <label>Nội dung<input value={entry.content} onChange={event=>setFinanceEntries(items=>items.map(item=>item.id===entry.id?{...item,content:event.target.value}:item))} placeholder={entry.type==='INCOME'?'Ví dụ: Thu tiền phòng':'Ví dụ: Mua văn phòng phẩm'}/></label>
+        <label>Số tiền<div className="money-input"><input inputMode="numeric" value={entry.amount} onChange={event=>setFinanceEntries(items=>items.map(item=>item.id===entry.id?{...item,amount:event.target.value}:item))} placeholder="0"/><span>₫</span></div></label>
+        <label>Lý do<textarea value={entry.reason} onChange={event=>setFinanceEntries(items=>items.map(item=>item.id===entry.id?{...item,reason:event.target.value}:item))} placeholder="Nêu rõ lý do thu hoặc chi"/></label>
+      </article>)}</div>
+      <button type="button" className="outline-add finance-add" disabled={financeEntries.length>=12} onClick={()=>setFinanceEntries(items=>[...items,emptyFinanceEntry()])}>＋ Thêm khoản thu / chi</button>
+      <div className="finance-totals"><div><span>Tổng thu</span><strong className="income-text">{formatMoney(totals.totalIncome)} ₫</strong></div><div><span>Tổng chi</span><strong className="expense-text">{formatMoney(totals.totalExpense)} ₫</strong></div><div><span>Tiền mặt phát sinh</span><strong>{formatMoney(totals.cashTotal)} ₫</strong></div><div><span>Chuyển khoản phát sinh</span><strong>{formatMoney(totals.transferTotal)} ₫</strong></div><div className="ending-balance"><span>Dư cuối dự kiến</span><strong>{formatMoney(totals.endingBalance)} ₫</strong></div></div>
+    </section>
 
     <section className="handover-section"><div className="section-number">II</div><h2>Kho lễ tân</h2><div className="compact-fields">{([['minibar','Kho minibar'],['keys','Kho ký gửi'],['phone','Sạc điện thoại, đàm']] as Array<[keyof Hotel,string]>).map(([key,label])=><label key={key}>{label}<select value={hotel[key]} onChange={event=>setHotel(value=>({...value,[key]:event.target.value}))}><option>Đủ</option><option>Thiếu</option><option>Thừa</option><option>Cần kiểm tra</option></select></label>)}</div></section>
 
