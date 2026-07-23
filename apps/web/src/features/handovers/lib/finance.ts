@@ -9,7 +9,8 @@ export type FinanceEntry={
 export type FinanceData={version:2;fixedFund:number;entries:Array<Omit<FinanceEntry,'id'|'amount'>&{amount:number}>};
 export const emptyFinanceEntry=():FinanceEntry=>({id:crypto.randomUUID(),type:'INCOME',content:'',amount:'',paymentMethod:'CASH',reason:''});
 export function moneyValue(value:string){const parsed=Number(value.replace(/[^0-9]/g,''));return Number.isFinite(parsed)?parsed:0}
-export function formatMoney(value:number){return new Intl.NumberFormat('vi-VN').format(value)}
+export function formatMoney(value:number){return new Intl.NumberFormat('en-US',{maximumFractionDigits:0}).format(value)}
+export function formatMoneyInput(value:string){const digits=value.replace(/[^0-9]/g,'');return digits?formatMoney(Number(digits)):''}
 export function financeTotals(fixedFund:string,entries:FinanceEntry[]){
   const totalIncome=entries.filter(item=>item.type==='INCOME').reduce((sum,item)=>sum+moneyValue(item.amount),0);
   const totalExpense=entries.filter(item=>item.type==='EXPENSE').reduce((sum,item)=>sum+moneyValue(item.amount),0);

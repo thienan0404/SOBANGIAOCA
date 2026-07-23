@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {financeTotals,parseFinance,serializeFinance,type FinanceEntry} from '../features/handovers/lib/finance';
+import {financeTotals,formatMoney,formatMoneyInput,parseFinance,serializeFinance,type FinanceEntry} from '../features/handovers/lib/finance';
 
 const entries:FinanceEntry[]=[
   {id:'income',type:'INCOME',content:'Thu tiền phòng',amount:'2.000.000',paymentMethod:'TRANSFER',reason:'Khách thanh toán tiền phòng'},
@@ -7,6 +7,13 @@ const entries:FinanceEntry[]=[
 ];
 
 describe('finance ledger',()=>{
+  it('formats money with comma thousands separators while typing',()=>{
+    expect(formatMoneyInput('1000000')).toBe('1,000,000');
+    expect(formatMoneyInput('1,000,000')).toBe('1,000,000');
+    expect(formatMoneyInput('')).toBe('');
+    expect(formatMoney(2500000)).toBe('2,500,000');
+  });
+
   it('calculates income, expense, payment methods and ending balance',()=>{
     expect(financeTotals('5.000.000',entries)).toEqual({totalIncome:2000000,totalExpense:280000,cashTotal:280000,transferTotal:2000000,endingBalance:6720000});
   });

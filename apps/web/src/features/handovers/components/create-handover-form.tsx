@@ -4,7 +4,7 @@ import {useEffect,useMemo,useState} from 'react';
 import {useRouter} from 'next/navigation';
 import {handoverApi,type EmployeeOption,type ShiftOption} from '../api/handovers';
 import {useCreateHandover} from '../hooks/use-handovers';
-import {emptyFinanceEntry,financeTotals,formatMoney,serializeFinance,type FinanceEntry} from '../lib/finance';
+import {emptyFinanceEntry,financeTotals,formatMoney,formatMoneyInput,serializeFinance,type FinanceEntry} from '../lib/finance';
 
 type Task={title:string;details:string;priority:'LOW'|'NORMAL'|'HIGH'|'URGENT';roomNumber:string};
 type Hotel={minibar:string;keys:string;phone:string;vacantRooms:string;occupiedRooms:string;stayingGuests:string;guestNotes:string;lostFound:string;incidents:string};
@@ -80,12 +80,12 @@ export function CreateHandoverForm(){
     <section className="handover-section finance-section">
       <div className="section-number">I</div><h2>Tài chính – quỹ</h2>
       <p className="section-note">Ghi rõ từng khoản thu, chi, số tiền và lý do phát sinh.</p>
-      <label className="fixed-fund-field">Quỹ cố định đầu ca<div className="money-input"><input inputMode="numeric" value={fixedFund} onChange={event=>setFixedFund(event.target.value)} placeholder="0"/><span>₫</span></div></label>
+      <label className="fixed-fund-field">Quỹ cố định đầu ca<div className="money-input"><input inputMode="numeric" value={fixedFund} onChange={event=>setFixedFund(formatMoneyInput(event.target.value))} placeholder="0"/><span>₫</span></div></label>
       <div className="finance-entry-list">{financeEntries.map((entry,index)=><article className={`finance-entry ${entry.type==='INCOME'?'income':'expense'}`} key={entry.id}>
         <div className="finance-entry-head"><strong>Khoản phát sinh {index+1}</strong>{financeEntries.length>1&&<button type="button" aria-label={`Xóa khoản ${index+1}`} onClick={()=>setFinanceEntries(items=>items.filter(item=>item.id!==entry.id))}>×</button>}</div>
         <div className="finance-entry-grid"><label>Loại<select value={entry.type} onChange={event=>setFinanceEntries(items=>items.map(item=>item.id===entry.id?{...item,type:event.target.value as FinanceEntry['type']}:item))}><option value="INCOME">Thu</option><option value="EXPENSE">Chi</option></select></label><label>Hình thức<select value={entry.paymentMethod} onChange={event=>setFinanceEntries(items=>items.map(item=>item.id===entry.id?{...item,paymentMethod:event.target.value as FinanceEntry['paymentMethod']}:item))}><option value="CASH">Tiền mặt</option><option value="TRANSFER">Chuyển khoản</option></select></label></div>
         <label>Nội dung<input value={entry.content} onChange={event=>setFinanceEntries(items=>items.map(item=>item.id===entry.id?{...item,content:event.target.value}:item))} placeholder={entry.type==='INCOME'?'Ví dụ: Thu tiền phòng':'Ví dụ: Mua văn phòng phẩm'}/></label>
-        <label>Số tiền<div className="money-input"><input inputMode="numeric" value={entry.amount} onChange={event=>setFinanceEntries(items=>items.map(item=>item.id===entry.id?{...item,amount:event.target.value}:item))} placeholder="0"/><span>₫</span></div></label>
+        <label>Số tiền<div className="money-input"><input inputMode="numeric" value={entry.amount} onChange={event=>setFinanceEntries(items=>items.map(item=>item.id===entry.id?{...item,amount:formatMoneyInput(event.target.value)}:item))} placeholder="0"/><span>₫</span></div></label>
         <label>Lý do<textarea value={entry.reason} onChange={event=>setFinanceEntries(items=>items.map(item=>item.id===entry.id?{...item,reason:event.target.value}:item))} placeholder="Nêu rõ lý do thu hoặc chi"/></label>
       </article>)}</div>
       <button type="button" className="outline-add finance-add" disabled={financeEntries.length>=12} onClick={()=>setFinanceEntries(items=>[...items,emptyFinanceEntry()])}>＋ Thêm khoản thu / chi</button>
