@@ -33,6 +33,12 @@ type DirectHandoverRow={
     user:{id:string;full_name:string}|null;
   }>;
 };
+type DirectHandoverDetailRow={
+  id:string;code:string;status:HandoverStatus;branch_id:string;notes:string|null;
+  created_at:string;submitted_at:string|null;confirmed_at:string|null;
+  participants:Array<{id:string;participant_type:ParticipantType;confirmed_at:string|null;user:{id:string;full_name:string;employee_code:string|null}|null}>;
+  items:Array<{id:string;title:string;details:string;category:string;priority:string;room_number:string|null}>;
+};
 
 async function listHandovers(branchId?:string):Promise<HandoverSummary[]>{
   let query=createClient()
@@ -62,9 +68,26 @@ async function listHandovers(branchId?:string):Promise<HandoverSummary[]>{
   });
 }
 
+async function getHandover(id:string):Promise<HandoverDetail>{
+  const{data,error}=await createClient().from('handovers').select(`
+    id,code,status,branch_id,notes,created_at,submitted_at,confirmed_at,
+    participants:handover_participants(
+      id,participant_type,confirmed_at,
+      user:profiles!handover_participants_user_id_fkey(id,full_name,employee_code)
+    ),
+    items:handover_items(id,title,details,category,priority,room_number)
+  `).eq('id',id).maybeSingle();
+  if(error||!data)return apiRequest<HandoverDetail>(`/handovers/${id}`);
+  const row=data as unknown as DirectHandoverDetailRow;
+  const participants:HandoverParticipant[]=row.participants.map(item=>({id:item.id,participantType:item.participant_type,confirmedAt:item.confirmed_at,user:{id:item.user?.id??'',fullName:item.user?.full_name??'Nhân viên',employeeCode:item.user?.employee_code??null}}));
+  const giver=participants.find(item=>item.participantType==='GIVER')?.user;
+  const receiver=participants.find(item=>item.participantType==='RECEIVER')?.user;
+  return{id:row.id,code:row.code,status:row.status,branchId:row.branch_id,giver:{id:giver?.id??'',name:giver?.fullName??'Người giao'},receiver:{id:receiver?.id??'',name:receiver?.fullName??'Người nhận'},createdAt:row.created_at,...(row.submitted_at?{submittedAt:row.submitted_at}:{}),...(row.notes?{notes:row.notes}:{}),confirmedAt:row.confirmed_at,participants,items:row.items.map(item=>({id:item.id,title:item.title,details:item.details,category:item.category,priority:item.priority,roomNumber:item.room_number}))};
+}
+
 export const handoverApi={
   list:listHandovers,
-  get:(id:string)=>apiRequest<HandoverDetail>(`/handovers/${id}`),
+  get:getHandover,
   create:(data:CreateHandoverRequest)=>apiRequest<HandoverSummary>('/handovers',{method:'POST',body:JSON.stringify(data)}),
   submit:(id:string)=>apiRequest<unknown>(`/handovers/${id}/submit`,{method:'POST'}),
   confirm:(id:string)=>apiRequest<unknown>(`/handovers/${id}/confirm`,{method:'POST'}),

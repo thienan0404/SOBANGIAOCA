@@ -12,10 +12,10 @@ function DetailContent(){
   const router=useRouter();
   const id=useSearchParams().get('id')??'';
   const queryClient=useQueryClient();
-  const{data,isLoading,error}=useHandover(id);
+  const{data,isLoading,error,refetch,isFetching}=useHandover(id);
   if(!id)return <div className="empty">Thiếu mã phiếu bàn giao</div>;
   if(isLoading)return <div className="ops-loading"><i/><p>Đang tải phiếu bàn giao...</p></div>;
-  if(error||!data)return <div className="empty">Không tìm thấy phiếu bàn giao</div>;
+  if(error||!data)return <div className="empty error-state"><div className="empty-icon">!</div><strong>Chưa tải được báo cáo bàn giao</strong><p>{error instanceof Error?error.message:'Vui lòng kiểm tra kết nối và thử lại.'}</p><button disabled={isFetching} onClick={()=>void refetch()}>{isFetching?'Đang tải lại...':'Thử lại'}</button></div>;
 
   const finance=data.items?.find(item=>item.category==='FINANCE');
   const financeData=finance?parseFinance(finance.details):null;
