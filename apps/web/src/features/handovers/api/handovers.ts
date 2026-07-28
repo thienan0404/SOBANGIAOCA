@@ -5,7 +5,8 @@ import {apiRequest} from './client';
 export type HandoverParticipant={id:string;participantType:ParticipantType;confirmedAt?:string|null;signatureText?:string|null;signatureMethod?:string|null;user:{id:string;fullName:string;employeeCode?:string|null}};
 export type InventoryCheck={itemCode:string;isCompleted:boolean;receiverCheckedAt?:string|null};
 export type HandoverAmendment={id:string;reason:string;content:Record<string,unknown>;createdAt:string};
-export type HandoverListItem=HandoverSummary&{searchContent:string};
+export type HandoverTask={id:string;title:string;details:string;priority:'LOW'|'NORMAL'|'HIGH'|'URGENT';roomNumber:string|null};
+export type HandoverListItem=HandoverSummary&{searchContent:string;tasks:HandoverTask[]};
 export type HandoverDetail=HandoverSummary&{notes?:string;createdAt?:string;submittedAt?:string|null;confirmedAt?:string|null;operationalLockedAt?:string|null;lockedAt?:string|null;amendments?:HandoverAmendment[];participants?:HandoverParticipant[];checklistResults?:InventoryCheck[];items:Array<{id:string;title:string;details:string;category:string;priority:string;roomNumber?:string|null}>};
 export type ParticipantHistory={id:string;participantType:ParticipantType;assignedAt:string;confirmedAt?:string|null;user:{id:string;fullName:string};handover:{id:string;code:string;status:HandoverStatus}};
 export type EmployeeOption={id:string;fullName:string;employeeCode:string|null;email:string;memberships?:Array<{branchId:string;role:{code:string;name:string}}>} ;
@@ -32,7 +33,7 @@ type DirectHandoverRow={
   created_at:string;
   submitted_at:string|null;
   notes:string|null;
-  items:Array<{title:string;details:string}>;
+  items:Array<{id:string;title:string;details:string;category:string;priority:'LOW'|'NORMAL'|'HIGH'|'URGENT';room_number:string|null}>;
   participants:Array<{
     participant_type:ParticipantType;
     user:{id:string;full_name:string}|null;
@@ -59,7 +60,7 @@ async function listHandovers(branchId?:string):Promise<HandoverListItem[]>{
       created_at,
       submitted_at,
       notes,
-      items:handover_items(title,details),
+      items:handover_items(id,title,details,category,priority,room_number),
       participants:handover_participants(
         participant_type,
         user:profiles!handover_participants_user_id_fkey(id,full_name)
@@ -74,7 +75,7 @@ async function listHandovers(branchId?:string):Promise<HandoverListItem[]>{
   return rows.map(row=>{
     const giver=row.participants.find(item=>item.participant_type==='GIVER')?.user;
     const receiver=row.participants.find(item=>item.participant_type==='RECEIVER')?.user;
-    return{id:row.id,code:row.code,status:row.status,branchId:row.branch_id,giver:{id:giver?.id??'',name:giver?.full_name??'Người giao'},receiver:{id:receiver?.id??'',name:receiver?.full_name??'Người nhận'},createdAt:row.created_at,searchContent:[row.notes,...row.items.flatMap(item=>[item.title,item.details])].filter(Boolean).join(' '),...(row.submitted_at?{submittedAt:row.submitted_at}:{})};
+    return{id:row.id,code:row.code,status:row.status,branchId:row.branch_id,giver:{id:giver?.id??'',name:giver?.full_name??'Người giao'},receiver:{id:receiver?.id??'',name:receiver?.full_name??'Người nhận'},createdAt:row.created_at,searchContent:[row.notes,...row.items.flatMap(item=>[item.title,item.details])].filter(Boolean).join(' '),tasks:row.items.filter(item=>item.category==='TASK').map(item=>({id:item.id,title:item.title,details:item.details,priority:item.priority,roomNumber:item.room_number})),...(row.submitted_at?{submittedAt:row.submitted_at}:{})};
   });
 }
 
