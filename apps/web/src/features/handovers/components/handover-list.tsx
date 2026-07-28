@@ -23,7 +23,7 @@ function normalizeSearch(value:string){
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('vi').trim();
 }
 
-export function HandoverList({view='reception',showFilters=false}:{view?:RoleGroup;showFilters?:boolean}){
+export function HandoverList({view='reception',showFilters=false,limit,compact=false}:{view?:RoleGroup;showFilters?:boolean;limit?:number;compact?:boolean}){
   const {data,isLoading,isFetching,error,refetch}=useHandovers();
   const[giverId,setGiverId]=useState('');
   const[receiverId,setReceiverId]=useState('');
@@ -40,6 +40,7 @@ export function HandoverList({view='reception',showFilters=false}:{view?:RoleGro
     const query=normalizeSearch(searchQuery);
     return roleVisible.filter(item=>(!giverId||item.giver.id===giverId)&&(!receiverId||item.receiver.id===receiverId)&&(!handoverDate||dateInVietnam(item.createdAt)===handoverDate)&&(!query||normalizeSearch([item.code,item.giver.name,item.receiver.name,item.searchContent].join(' ')).includes(query)));
   },[giverId,handoverDate,receiverId,roleVisible,searchQuery]);
+  const displayed=typeof limit==='number'?visible.slice(0,limit):visible;
   const hasFilters=Boolean(giverId||receiverId||handoverDate||searchQuery);
   const clearFilters=()=>{setGiverId('');setReceiverId('');setHandoverDate('');setSearchQuery('')};
 
@@ -47,6 +48,7 @@ export function HandoverList({view='reception',showFilters=false}:{view?:RoleGro
   if(error)return <div role="alert" className="empty error-state"><div className="empty-icon">!</div><strong>Chưa thể kết nối dữ liệu</strong><p>{error.message}</p><button disabled={isFetching} onClick={()=>void refetch()}>{isFetching?'Đang thử lại...':'Thử lại'}</button></div>;
   if(!roleVisible.length){
     const title=view==='management'?'Không có phiếu chờ BGĐ duyệt':view==='accounting'?'Không có phiếu chờ kế toán':'Ca trực chưa có bàn giao';
+    if(compact)return <div className="dashboard-empty-state"><span>✓</span><div><strong>{title}</strong><p>Hiện chưa có nội dung cần xử lý.</p></div></div>;
     const description=view==='management'
       ?'Các phiếu đã bàn giao sẽ xuất hiện tại đây để BGĐ cơ sở kiểm tra.'
       :view==='accounting'
@@ -61,7 +63,7 @@ export function HandoverList({view='reception',showFilters=false}:{view?:RoleGro
       <label>Ngày giao ca<input type="date" value={handoverDate} onChange={event=>setHandoverDate(event.target.value)}/></label>
       {hasFilters&&<button type="button" onClick={clearFilters}>Xóa bộ lọc</button>}
     </section>}
-    <div className="list-status"><span><i/> Đang đồng bộ</span><b>{visible.length}/{roleVisible.length} phiếu</b></div>
-    {!visible.length?<div className="empty filtered-empty"><strong>Không tìm thấy phiếu phù hợp</strong><p>Hãy thay đổi hoặc xóa bộ lọc để xem lại danh sách.</p><button type="button" onClick={clearFilters}>Xóa bộ lọc</button></div>:<div className="card-list">{visible.map(x=><Link className="handover-card amber" href={`/handovers/detail?id=${x.id}`} key={x.id}><div className="card-icon">⇄</div><div className="card-body"><div className="card-title"><h3>{x.code}</h3><span>{labels[x.status]}</span></div><p className="detail">{x.giver?.name??'Người giao'} → {x.receiver?.name??'Người nhận'}</p><small className="handover-card-date">{formatDate(x.createdAt)}</small></div><span className="card-chevron">›</span></Link>)}</div>}
+    {!compact&&<div className="list-status"><span><i/> Đang đồng bộ</span><b>{visible.length}/{roleVisible.length} phiếu</b></div>}
+    {!visible.length?<div className="empty filtered-empty"><strong>Không tìm thấy phiếu phù hợp</strong><p>Hãy thay đổi hoặc xóa bộ lọc để xem lại danh sách.</p><button type="button" onClick={clearFilters}>Xóa bộ lọc</button></div>:<div className={`card-list${compact?' compact-handover-list':''}`}>{displayed.map(x=><Link className="handover-card amber" href={`/handovers/detail?id=${x.id}`} key={x.id}><div className="card-icon">⇄</div><div className="card-body"><div className="card-title"><h3>{x.code}</h3><span>{labels[x.status]}</span></div><p className="detail">{x.giver?.name??'Người giao'} → {x.receiver?.name??'Người nhận'}</p><small className="handover-card-date">{formatDate(x.createdAt)}</small></div><span className="card-chevron">›</span></Link>)}</div>}
   </>;
 }
