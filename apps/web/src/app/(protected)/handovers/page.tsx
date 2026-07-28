@@ -14,6 +14,6 @@ export default function Handovers(){
   return <div className="handover-index-page">
     <header className="inner-page-title"><div><h1>{title}</h1><p>{subtitle}</p></div>{group==='reception'&&<Link className="header-create" href="/handovers/create">＋ Tạo mới</Link>}</header>
     <div className="ops-section-heading"><div><span>SỔ BÀN GIAO</span><h2>{listTitle}</h2></div></div>
-    <HandoverList view={group}/>
+    <HandoverList view={group} showFilters/>
   </div>;
 }
