@@ -110,6 +110,29 @@ export class HandoversController {
     );
   }
 
+  @Post("handovers/:id/management-return")
+  managementReturn(
+    @Req() request: AuthRequest,
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Headers("x-request-id") requestId?: string,
+  ) {
+    return this.service.managementReturn(
+      this.user(request), id, body, evidence(request, requestId),
+    );
+  }
+
+  @Post("handovers/:id/accounting-return")
+  accountingReturn(
+    @Req() request: AuthRequest,
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Headers("x-request-id") requestId?: string,
+  ) {
+    return this.service.accountingReturn(
+      this.user(request), id, body, evidence(request, requestId),
+    );
+  }
   @Post("handovers/:id/request-supplement")
   supplement(
     @Req() request: AuthRequest,
@@ -161,6 +184,18 @@ export class HandoverReceiverController {
     );
   }
 
+  @Post("handovers/:id/receiver-amend")
+  receiverAmend(
+    @Req() request: AuthRequest,
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Headers("x-work-session-id") workSessionId?: string,
+    @Headers("x-request-id") requestId?: string,
+  ) {
+    return this.service.receiverAmend(
+      request.authUser!.id, workSessionId, id, body, evidence(request, requestId),
+    );
+  }
   @Post("handovers/:id/receiver-request-supplement")
   receiverSupplement(
     @Req() request: AuthRequest,

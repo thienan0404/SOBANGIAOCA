@@ -96,3 +96,55 @@ Verification:
 | API unit tests | **PASS** - 3 suites, 11 tests |
 | `pnpm --filter @a25/web build` | **PASS** |
 | `pnpm --filter @a25/api build` | **PASS** |
+
+## Khóa vận hành, trả lại và điều chỉnh phiếu - 28/07/2026
+
+Trạng thái: **HOÀN TẤT**
+
+Các chức năng hiện có được giữ nguyên:
+
+- Xác định ca theo lịch và thời gian thực, tạo phiên làm việc.
+- Lập phiếu, nhập từng khoản thu/chi có nội dung, số tiền, hình thức và lý do.
+- Kiểm kê hai bên, chữ ký người giao, đăng nhập tạm thời và chữ ký người nhận.
+- Kết thúc phiên người giao, chuyển phiên sang người nhận, BGĐ và kế toán ký, audit log.
+
+Các thay đổi để đúng luồng vận hành:
+
+- Khi người nhận ký, đặt `operational_locked_at`: hoàn tất giao ca vận hành và khóa dữ liệu gốc.
+- Phiếu chuyển sang **Đã bàn giao – Chờ BGĐ cơ sở**; ca của người nhận tiếp tục hoạt động bình thường.
+- BGĐ/Phó BGĐ có thể ký duyệt hoặc trả lại kèm lý do.
+- Kế toán có thể ký nghiệm thu hoặc trả lại kèm lý do.
+- Người nhận xử lý phiếu trả lại bằng một bản điều chỉnh append-only, chọn phạm vi vận hành/tài chính và ký lại bằng tài khoản tạm thời.
+- Khi kế toán trả lại, chữ ký BGĐ và kế toán trước đó bị hủy để bắt buộc duyệt lại từ BGĐ.
+- Phiếu chỉ đặt `locked_at`, hoàn tất hồ sơ và trở thành bất biến hoàn toàn sau đủ bốn chữ ký.
+- Database ngăn sửa dữ liệu gốc sau khóa vận hành, ngăn sửa/xóa bản điều chỉnh và ngăn mọi thay đổi sau khóa cuối.
+
+API mới:
+
+- `POST /api/v1/handovers/:id/management-return`
+- `POST /api/v1/handovers/:id/accounting-return`
+- `POST /api/v1/handovers/:id/receiver-amend`
+
+Migration:
+
+- `supabase/migrations/20260728000300_operational_handover_review_returns.sql`
+- `supabase/migrations/20260728000400_backfill_operational_handover_lock.sql`
+- `supabase/migrations/20260728000500_protect_operational_signatures.sql`
+- **PASS** — đã áp dụng lên Supabase linked project; local/remote cùng phiên bản `20260728000500`.
+
+Kết quả xác minh:
+
+| Kiểm tra                       | Kết quả                          |
+| ------------------------------ | -------------------------------- |
+| Prisma Client generation       | **PASS**                         |
+| `pnpm typecheck`               | **PASS** — 8/8 packages          |
+| `pnpm lint`                    | **PASS** — 8/8 packages          |
+| Validation tests               | **PASS** — 6/6 tests             |
+| API unit tests                 | **PASS** — 3 suites, 16/16 tests |
+| API integration tests hiện có  | **PASS** — 2/2 tests             |
+| `pnpm --filter @a25/web build` | **PASS** — 30 static pages       |
+| `pnpm --filter @a25/api build` | **PASS**                         |
+| Supabase `db push --linked`    | **PASS**                         |
+| Supabase migration parity      | **PASS**                         |
+
+Ghi chú môi trường: máy kiểm tra đang chạy Node.js 24.14.0 nên pnpm hiển thị cảnh báo khác với Node.js 22.14.0 được khóa cho Render; tất cả lệnh xác minh vẫn PASS.

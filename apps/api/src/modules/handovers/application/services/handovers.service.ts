@@ -14,6 +14,7 @@ import {
 } from "@prisma/client";
 import {
   createHandoverSchema,
+  receiverAmendmentSchema,
   receiverSignatureSchema,
   receiverSupplementSchema,
   signatureSchema,
@@ -204,6 +205,7 @@ export class HandoversService {
         participants: { include: { user: true } },
         items: true,
         checklistResults: true,
+        amendments: { orderBy: { createdAt: "asc" } },
       },
     });
     if (!handover) throw new NotFoundException("Không tìm thấy phiếu bàn giao");
@@ -582,6 +584,7 @@ export class HandoversService {
           status: HandoverStatus.PENDING_MANAGEMENT_APPROVAL,
           version: { increment: 1 },
           confirmedAt: now,
+          operationalLockedAt: now,
         },
       });
       await this.audit(
@@ -839,6 +842,207 @@ export class HandoversService {
     );
   }
 
+  private async reviewReturn(
+    userId: string,
+    id: string,
+    input: unknown,
+    evidence: RequestEvidence,
+    stage: "MANAGEMENT" | "ACCOUNTING",
+  ) {
+    const { reason } = transitionReasonSchema.parse(input);
+    const handover = await this.get(userId, id);
+    const management = stage === "MANAGEMENT";
+    const expected = management
+      ? HandoverStatus.PENDING_MANAGEMENT_APPROVAL
+      : HandoverStatus.PENDING_ACCOUNTING_APPROVAL;
+    const next = management
+      ? HandoverStatus.MANAGEMENT_CHANGES_REQUESTED
+      : HandoverStatus.ACCOUNTING_CHANGES_REQUESTED;
+    if (handover.status !== expected)
+      throw new BadRequestException("Phiếu chưa ở bước có thể trả lại");
+
+    const membership = await this.context(userId, handover.branchId);
+    const allowedRoles = management
+      ? ["BRANCH_DIRECTOR", "DEPUTY_BRANCH_DIRECTOR", "BRANCH_MANAGER", "ADMIN"]
+      : ["ACCOUNTANT", "CHIEF_ACCOUNTANT", "ADMIN"];
+    if (!allowedRoles.includes(membership.role.code))
+      throw new ForbiddenException(
+        management
+          ? "Chỉ BGĐ hoặc Phó BGĐ cơ sở được trả lại phiếu"
+          : "Chỉ kế toán được trả lại phiếu",
+      );
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.handoverParticipant.deleteMany({
+        where: {
+          handoverId: id,
+          participantType: {
+            in: [ParticipantType.SUPERVISOR, ParticipantType.APPROVER],
+          },
+        },
+      });
+      await tx.handoverAmendment.create({
+        data: {
+          handoverId: id,
+          reason,
+          content: {
+            type: "REVIEW_RETURN",
+            stage,
+            returnedAt: new Date().toISOString(),
+          },
+          createdBy: userId,
+        },
+      });
+      const updated = await tx.handover.update({
+        where: { id, version: handover.version },
+        data: { status: next, version: { increment: 1 } },
+      });
+      await this.audit(
+        tx,
+        handover,
+        userId,
+        management
+          ? "HANDOVER_MANAGEMENT_RETURNED"
+          : "HANDOVER_ACCOUNTING_RETURNED",
+        next,
+        evidence,
+        membership.role.code,
+      );
+      return updated;
+    });
+  }
+
+  managementReturn(
+    userId: string,
+    id: string,
+    input: unknown,
+    evidence: RequestEvidence = {},
+  ) {
+    return this.reviewReturn(userId, id, input, evidence, "MANAGEMENT");
+  }
+
+  accountingReturn(
+    userId: string,
+    id: string,
+    input: unknown,
+    evidence: RequestEvidence = {},
+  ) {
+    return this.reviewReturn(userId, id, input, evidence, "ACCOUNTING");
+  }
+
+  async receiverAmend(
+    branchAccountId: string,
+    currentWorkSessionId: string | undefined,
+    id: string,
+    input: unknown,
+    evidence: RequestEvidence = {},
+  ) {
+    const data = receiverAmendmentSchema.parse(input);
+    const handover = await this.prisma.handover.findUnique({
+      where: { id },
+      include: { participants: true, amendments: true },
+    });
+    if (!handover) throw new NotFoundException("Không tìm thấy phiếu bàn giao");
+    if (
+      handover.status !== HandoverStatus.MANAGEMENT_CHANGES_REQUESTED &&
+      handover.status !== HandoverStatus.ACCOUNTING_CHANGES_REQUESTED
+    )
+      throw new BadRequestException("Phiếu không chờ người nhận điều chỉnh");
+
+    const employee = await this.verifyTemporaryReceiver(
+      branchAccountId,
+      handover.branchId,
+      data.username,
+      data.password,
+    );
+    const receiver = handover.participants.find(
+      (item) => item.participantType === ParticipantType.RECEIVER,
+    );
+    if (receiver?.userId !== employee.id)
+      throw new ForbiddenException(
+        "Chỉ người nhận của phiếu được tạo bản điều chỉnh",
+      );
+    this.assertSignatureName(employee.fullName, data.signatureText);
+    if (!currentWorkSessionId)
+      throw new UnauthorizedException(
+        "Không tìm thấy phiên làm việc của người nhận",
+      );
+    const receiverSession = await this.prisma.workSession.findFirst({
+      where: {
+        id: currentWorkSessionId,
+        authenticatedBy: branchAccountId,
+        profileId: employee.id,
+        branchId: handover.branchId,
+        status: "ACTIVE",
+        endedAt: null,
+      },
+    });
+    if (!receiverSession)
+      throw new UnauthorizedException(
+        "Phiên làm việc của người nhận đã hết hạn",
+      );
+
+    const now = new Date();
+    const returnedFrom = handover.status;
+    return this.prisma.$transaction(async (tx) => {
+      await tx.handoverAmendment.create({
+        data: {
+          handoverId: id,
+          reason: data.reason,
+          content: {
+            type: "RECEIVER_ADJUSTMENT",
+            revision: handover.amendments.length + 1,
+            scope: data.scope,
+            correction: data.correction,
+            returnedFrom,
+            signedAt: now.toISOString(),
+          },
+          createdBy: employee.id,
+        },
+      });
+      await tx.handoverParticipant.update({
+        where: {
+          handoverId_participantType: {
+            handoverId: id,
+            participantType: ParticipantType.RECEIVER,
+          },
+        },
+        data: this.signatureData(
+          id,
+          employee.id,
+          data.signatureText,
+          now,
+          evidence,
+          "TEMPORARY_EMPLOYEE_LOGIN",
+        ),
+      });
+      await tx.handoverParticipant.deleteMany({
+        where: {
+          handoverId: id,
+          participantType: {
+            in: [ParticipantType.SUPERVISOR, ParticipantType.APPROVER],
+          },
+        },
+      });
+      const updated = await tx.handover.update({
+        where: { id, version: handover.version },
+        data: {
+          status: HandoverStatus.PENDING_MANAGEMENT_APPROVAL,
+          version: { increment: 1 },
+        },
+      });
+      await this.audit(
+        tx,
+        handover,
+        employee.id,
+        "HANDOVER_RECEIVER_AMENDED_AND_RESIGNED",
+        HandoverStatus.PENDING_MANAGEMENT_APPROVAL,
+        evidence,
+        "RECEIVER",
+      );
+      return updated;
+    });
+  }
   async requestSupplement(
     userId: string,
     id: string,

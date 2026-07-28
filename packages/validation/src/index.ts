@@ -14,4 +14,11 @@ export const receiverSupplementSchema=z.object({
   password:z.string().min(6).max(200),
   reason:z.string().trim().min(3).max(2000)
 });
+export const receiverAmendmentSchema=signatureSchema.extend({
+  username:z.string().trim().min(3).max(80),
+  password:z.string().min(6).max(200),
+  reason:z.string().trim().min(3).max(2000),
+  correction:z.string().trim().min(3).max(5000),
+  scope:z.enum(['OPERATIONS','FINANCE','BOTH'])
+});
 export const paginationSchema=z.object({page:z.coerce.number().int().min(1).default(1),pageSize:z.coerce.number().int().min(1).max(100).default(20),branchId:uuidSchema.optional(),status:z.string().optional(),from:z.string().datetime().optional(),to:z.string().datetime().optional()});

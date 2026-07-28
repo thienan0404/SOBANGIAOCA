@@ -3,7 +3,7 @@ import {useHandovers} from '../hooks/use-handovers';
 import {HandoverStatus} from '@a25/contracts';
 import Link from 'next/link';
 
-const labels:Record<HandoverStatus,string>={DRAFT:'Bản nháp',SUBMITTED:'Đã gửi',PENDING_RECEIVER_CONFIRMATION:'Chờ người nhận',PENDING_MANAGEMENT_APPROVAL:'Chờ BGĐ cơ sở',PENDING_ACCOUNTING_APPROVAL:'Chờ kế toán',SUPPLEMENT_REQUESTED:'Cần bổ sung',RESUBMITTED:'Đã gửi lại',CONFIRMED:'Đã xác nhận',COMPLETED:'Đã khóa',CANCELLED:'Đã hủy',OVERDUE:'Quá hạn'};
+const labels:Record<HandoverStatus,string>={DRAFT:'Bản nháp',SUBMITTED:'Đã gửi',PENDING_RECEIVER_CONFIRMATION:'Chờ người nhận',PENDING_MANAGEMENT_APPROVAL:'Chờ BGĐ cơ sở',PENDING_ACCOUNTING_APPROVAL:'Chờ kế toán',MANAGEMENT_CHANGES_REQUESTED:'BGĐ trả lại',ACCOUNTING_CHANGES_REQUESTED:'Kế toán trả lại',SUPPLEMENT_REQUESTED:'Cần bổ sung',RESUBMITTED:'Đã gửi lại',CONFIRMED:'Đã xác nhận',COMPLETED:'Đã khóa',CANCELLED:'Đã hủy',OVERDUE:'Quá hạn'};
 
 export function HandoverList(){
   const {data,isLoading,isFetching,error,refetch}=useHandovers();

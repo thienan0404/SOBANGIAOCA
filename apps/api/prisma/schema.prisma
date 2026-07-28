@@ -13,6 +13,8 @@ SUBMITTED
 PENDING_RECEIVER_CONFIRMATION
 PENDING_MANAGEMENT_APPROVAL
 PENDING_ACCOUNTING_APPROVAL
+MANAGEMENT_CHANGES_REQUESTED
+ACCOUNTING_CHANGES_REQUESTED
 SUPPLEMENT_REQUESTED
 RESUBMITTED
 CONFIRMED
@@ -186,6 +188,7 @@ version Int @default(1)
 createdBy String @map("created_by") @db.Uuid
 submittedAt DateTime? @map("submitted_at") @db.Timestamptz
 confirmedAt DateTime? @map("confirmed_at") @db.Timestamptz
+operationalLockedAt DateTime? @map("operational_locked_at") @db.Timestamptz
 completedAt DateTime? @map("completed_at") @db.Timestamptz
 lockedAt DateTime? @map("locked_at") @db.Timestamptz
 createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
