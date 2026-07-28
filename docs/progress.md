@@ -36,6 +36,45 @@ Migration:
 | `pnpm --filter @a25/web build` | **PASS** |
 | `pnpm --filter @a25/api build` | **PASS** |
 
+## Luồng bàn giao 4 chữ ký - 28/07/2026
+
+Trạng thái: **HOÀN TẤT Ở MỨC MÃ NGUỒN**
+
+- Giữ nguyên đăng nhập hai lớp, xác định ca, phiên làm việc, biểu mẫu bàn giao và sổ thu/chi chi tiết.
+- Người giao hoàn tất kiểm kê, nhập họ tên ký và gửi phiếu.
+- Người nhận đăng nhập tạm thời bằng tài khoản nhân viên, xác nhận kiểm kê hai bên và ký.
+- Khi người nhận ký thành công, phiên người giao chuyển sang `TRANSFERRED` và phiên người nhận trở thành phiên đang hoạt động trên thiết bị.
+- BGĐ/Phó BGĐ cơ sở ký sau người nhận; kế toán ký sau BGĐ.
+- Phiếu chỉ chuyển sang `COMPLETED` và đặt `locked_at` sau khi đủ bốn chữ ký.
+- Database từ chối khóa khi thiếu chữ ký hoặc thiếu kiểm kê hai bên; phiếu và dữ liệu con đã khóa không thể sửa/xóa.
+- Mỗi bước tạo audit log và outbox event, kèm vai trò, thời gian, IP, user-agent và mã request khi có.
+- Mật khẩu đăng nhập tạm thời không được ghi vào database; bằng chứng chữ ký lưu bằng SHA-256.
+
+Migration cần áp dụng trước khi deploy API:
+
+- `supabase/migrations/20260728000100_four_signature_workflow.sql`
+
+Kết quả xác minh:
+
+| Kiểm tra | Kết quả |
+| --- | --- |
+| Prisma Client generation | **PASS** |
+| Supabase migration dry-run | **PASS** - 1 migration pending, không ghi production |
+| `pnpm typecheck` | **PASS** - 8/8 packages |
+| `pnpm lint` | **PASS** - 8/8 packages |
+| API unit tests | **PASS** - 3 suites, 14 tests |
+| API integration tests | **PASS** - 2/2 tests |
+| Web unit tests | **PASS** - 2 files, 5 tests |
+| Validation tests | **PASS** - 4/4 tests |
+| Handover state tests | **PASS** - 5/5 tests |
+| `pnpm --filter @a25/api build` | **PASS** |
+| `pnpm --filter @a25/web build` | **PASS** - 30 static pages |
+
+Chưa thực hiện trong lượt này:
+
+- Chưa chạy `supabase db push` vào database production.
+- Chưa deploy lại Render.
+
 Kết quả tổng thể: **PASS**.
 
 ## Normal account login - 20/07/2026

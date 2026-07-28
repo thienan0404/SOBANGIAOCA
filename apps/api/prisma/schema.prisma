@@ -11,6 +11,8 @@ enum HandoverStatus {
 DRAFT
 SUBMITTED
 PENDING_RECEIVER_CONFIRMATION
+PENDING_MANAGEMENT_APPROVAL
+PENDING_ACCOUNTING_APPROVAL
 SUPPLEMENT_REQUESTED
 RESUBMITTED
 CONFIRMED
@@ -161,6 +163,7 @@ scheduleMatch String @map("schedule_match")
 scheduledStart DateTime @map("scheduled_start") @db.Timestamptz
 actualStart DateTime @default(now()) @map("actual_start") @db.Timestamptz
 endedAt DateTime? @map("ended_at") @db.Timestamptz
+transferredFromSessionId String? @map("transferred_from_session_id") @db.Uuid
 createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 profile Profile @relation("EmployeeWorkSessions",fields:[profileId],references:[id])
 authenticator Profile @relation("BranchAccountWorkSessions",fields:[authenticatedBy],references:[id])
@@ -184,6 +187,7 @@ createdBy String @map("created_by") @db.Uuid
 submittedAt DateTime? @map("submitted_at") @db.Timestamptz
 confirmedAt DateTime? @map("confirmed_at") @db.Timestamptz
 completedAt DateTime? @map("completed_at") @db.Timestamptz
+lockedAt DateTime? @map("locked_at") @db.Timestamptz
 createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
 branch Branch @relation(fields:[branchId],references:[id])
@@ -192,6 +196,7 @@ creator Profile @relation("HandoverCreator",fields:[createdBy],references:[id])
 participants HandoverParticipant[]
 items HandoverItem[]
 amendments HandoverAmendment[]
+checklistResults ChecklistResult[]
 @@index([branchId,status,createdAt])
 @@map("handovers")
 }
@@ -207,9 +212,15 @@ assignedAt DateTime @default(now()) @map("assigned_at") @db.Timestamptz
 acknowledgedAt DateTime? @map("acknowledged_at") @db.Timestamptz
 confirmedAt DateTime? @map("confirmed_at") @db.Timestamptz
 signaturePath String? @map("signature_path")
+signatureText String? @map("signature_text")
+signatureHash String? @map("signature_hash") @db.VarChar(64)
+signatureMethod String? @map("signature_method")
+ipAddress String? @map("ip_address") @db.Inet
+userAgent String? @map("user_agent")
 createdBy String @map("created_by") @db.Uuid
 handover Handover @relation(fields:[handoverId],references:[id])
 user Profile @relation(fields:[userId],references:[id])
+@@unique([handoverId,participantType])
 @@index([branchId,userId,participantType,assignedAt])
 @@map("handover_participants")
 }
@@ -241,6 +252,10 @@ handoverId String @map("handover_id") @db.Uuid
 itemCode String @map("item_code")
 isCompleted Boolean @default(false) @map("is_completed")
 completedBy String? @map("completed_by") @db.Uuid
+completedAt DateTime? @map("completed_at") @db.Timestamptz
+receiverCheckedBy String? @map("receiver_checked_by") @db.Uuid
+receiverCheckedAt DateTime? @map("receiver_checked_at") @db.Timestamptz
+handover Handover @relation(fields:[handoverId],references:[id])
 @@unique([handoverId,itemCode])
 @@map("checklist_results")
 }
@@ -249,6 +264,7 @@ id String @id @default(uuid()) @db.Uuid
 organizationId String @map("organization_id") @db.Uuid
 branchId String @map("branch_id") @db.Uuid
 actorId String @map("actor_id") @db.Uuid
+actorRole String? @map("actor_role")
 action String
 entityType String @map("entity_type")
 entityId String @map("entity_id") @db.Uuid
@@ -256,6 +272,8 @@ oldValues Json? @map("old_values")
 newValues Json? @map("new_values")
 reason String?
 requestId String? @map("request_id")
+ipAddress String? @map("ip_address") @db.Inet
+userAgent String? @map("user_agent")
 createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 @@index([branchId,createdAt])
 @@map("audit_logs")
