@@ -120,3 +120,6 @@ body :where(input,textarea)::placeholder{font-family:inherit}
 /* Keep the room-tag sheet stable while the mobile keyboard is open */
 .room-tag-modal{overscroll-behavior:none;touch-action:manipulation}
 @media(max-width:520px){.room-tag-modal{height:100dvh;max-height:100dvh;overflow:hidden}.room-tag-form{height:calc(100dvh - max(18px,env(safe-area-inset-top)));max-height:calc(100dvh - max(18px,env(safe-area-inset-top)))}.room-tag-form-content{-webkit-overflow-scrolling:touch;scroll-padding-top:10px;scroll-padding-bottom:24px}.room-tag-form-content input,.room-tag-form-content select,.room-tag-form-content textarea{font-size:16px!important;touch-action:manipulation}.room-tag-form-content input::placeholder,.room-tag-form-content textarea::placeholder{font-size:16px}}
+/* Prevent iOS text inflation and focus zoom across the fixed mobile sheet */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+@media(max-width:520px){.room-tag-form,.room-tag-form-content{-webkit-text-size-adjust:100%;text-size-adjust:100%}.room-tag-form-content :where(input,select,textarea):focus{font-size:16px!important;transform:none}}
