@@ -10,6 +10,8 @@ export function LogoutButton(){
     localStorage.removeItem('a25.workSessionId');
     localStorage.removeItem('a25.employeeName');
     localStorage.removeItem('a25.employeeCode');
+    localStorage.removeItem('a25.employeeRole');
+    localStorage.removeItem('a25.employeeRoleName');
   }
 
   async function handleEmployeeLogout(){

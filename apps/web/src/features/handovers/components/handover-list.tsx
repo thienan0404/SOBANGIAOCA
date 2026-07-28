@@ -2,13 +2,27 @@
 import {useHandovers} from '../hooks/use-handovers';
 import {HandoverStatus} from '@a25/contracts';
 import Link from 'next/link';
+import type {RoleGroup} from '@/lib/employee-role';
 
 const labels:Record<HandoverStatus,string>={DRAFT:'Bản nháp',SUBMITTED:'Đã gửi',PENDING_RECEIVER_CONFIRMATION:'Chờ người nhận',PENDING_MANAGEMENT_APPROVAL:'Chờ BGĐ cơ sở',PENDING_ACCOUNTING_APPROVAL:'Chờ kế toán',MANAGEMENT_CHANGES_REQUESTED:'BGĐ trả lại',ACCOUNTING_CHANGES_REQUESTED:'Kế toán trả lại',SUPPLEMENT_REQUESTED:'Cần bổ sung',RESUBMITTED:'Đã gửi lại',CONFIRMED:'Đã xác nhận',COMPLETED:'Đã khóa',CANCELLED:'Đã hủy',OVERDUE:'Quá hạn'};
 
-export function HandoverList(){
+export function HandoverList({view='reception'}:{view?:RoleGroup}){
   const {data,isLoading,isFetching,error,refetch}=useHandovers();
   if(isLoading)return <div className="handover-skeleton" aria-label="Đang tải"><i/><i/><i/></div>;
   if(error)return <div role="alert" className="empty error-state"><div className="empty-icon">!</div><strong>Chưa thể kết nối dữ liệu</strong><p>{error.message}</p><button disabled={isFetching} onClick={()=>void refetch()}>{isFetching?'Đang thử lại...':'Thử lại'}</button></div>;
-  if(!data?.length)return <div className="empty professional-empty"><div className="empty-visual"><span>✓</span><i/><b/></div><strong>Ca trực chưa có bàn giao</strong><p>Mọi công việc đã được xử lý. Tạo phiếu mới khi có nội dung cần chuyển tiếp cho ca sau.</p><a className="primary-action empty-action" href="/handovers/create"><span>＋</span> Tạo phiếu đầu tiên</a><small><i/> Dữ liệu được đồng bộ theo thời gian thực</small></div>;
-  return <><div className="list-status"><span><i/> Đang đồng bộ</span><b>{data.length} phiếu</b></div><div className="card-list">{data.map(x=><Link className="handover-card amber" href={`/handovers/detail?id=${x.id}`} key={x.id}><div className="card-icon">⇄</div><div className="card-body"><div className="card-title"><h3>{x.code}</h3><span>{labels[x.status]}</span></div><p className="detail">{x.giver?.name??'Người giao'} → {x.receiver?.name??'Người nhận'}</p></div><span className="card-chevron">›</span></Link>)}</div></>;
+  const visible=(data??[]).filter(item=>{
+    if(view==='management')return item.status==='PENDING_MANAGEMENT_APPROVAL';
+    if(view==='accounting')return item.status==='PENDING_ACCOUNTING_APPROVAL';
+    return true;
+  });
+  if(!visible.length){
+    const title=view==='management'?'Không có phiếu chờ BGĐ duyệt':view==='accounting'?'Không có phiếu chờ kế toán':'Ca trực chưa có bàn giao';
+    const description=view==='management'
+      ?'Các phiếu đã bàn giao sẽ xuất hiện tại đây để BGĐ cơ sở kiểm tra.'
+      :view==='accounting'
+        ?'Phiếu đã được BGĐ duyệt sẽ xuất hiện tại đây để nghiệm thu tài chính.'
+        :'Mọi công việc đã được xử lý. Tạo phiếu mới khi có nội dung cần chuyển tiếp cho ca sau.';
+    return <div className="empty professional-empty"><div className="empty-visual"><span>✓</span><i/><b/></div><strong>{title}</strong><p>{description}</p>{view==='reception'&&<a className="primary-action empty-action" href="/handovers/create"><span>＋</span> Tạo phiếu đầu tiên</a>}<small><i/> Dữ liệu được đồng bộ theo thời gian thực</small></div>;
+  }
+  return <><div className="list-status"><span><i/> Đang đồng bộ</span><b>{visible.length} phiếu</b></div><div className="card-list">{visible.map(x=><Link className="handover-card amber" href={`/handovers/detail?id=${x.id}`} key={x.id}><div className="card-icon">⇄</div><div className="card-body"><div className="card-title"><h3>{x.code}</h3><span>{labels[x.status]}</span></div><p className="detail">{x.giver?.name??'Người giao'} → {x.receiver?.name??'Người nhận'}</p></div><span className="card-chevron">›</span></Link>)}</div></>;
 }

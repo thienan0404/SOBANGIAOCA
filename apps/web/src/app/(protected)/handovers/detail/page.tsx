@@ -1,10 +1,11 @@
 'use client';
 
-import {Suspense,useState} from 'react';
+import {Suspense,useEffect,useState} from 'react';
 import {useRouter,useSearchParams} from 'next/navigation';
 import {useQueryClient} from '@tanstack/react-query';
 import {handoverApi,useHandover,type HandoverParticipant} from '@/features/handovers';
 import {financeTotals,formatMoney,parseFinance,type FinanceEntry} from '@/features/handovers/lib/finance';
+import {roleGroup,storedEmployeeRole,type RoleGroup} from '@/lib/employee-role';
 
 type SignMode='giver'|'receiver'|'supplement'|'management'|'accounting'|'management-return'|'accounting-return'|'amendment';
 const statusLabels:Record<string,string>={
@@ -60,6 +61,8 @@ function DetailContent(){
   const[inventoryConfirmed,setInventoryConfirmed]=useState(false);
   const[actionError,setActionError]=useState('');
   const[actionPending,setActionPending]=useState(false);
+  const[group,setGroup]=useState<RoleGroup>('reception');
+  useEffect(()=>{queueMicrotask(()=>setGroup(roleGroup(storedEmployeeRole()?.code)))},[]);
 
   if(!id)return <div className="empty">Thiếu mã phiếu bàn giao</div>;
   if(isLoading)return <div className="ops-loading"><i/><p>Đang tải phiếu bàn giao...</p></div>;
@@ -152,11 +155,11 @@ function DetailContent(){
     <section className="handover-section signature-section"><div className="section-number">V</div><h2>Chữ ký phê duyệt</h2><div className="signature-grid four-signatures"><SignatureCard type="GIVER" participant={giver}/><SignatureCard type="RECEIVER" participant={receiver}/><SignatureCard type="SUPERVISOR" participant={supervisor}/><SignatureCard type="APPROVER" participant={approver}/></div></section>
 
     <div className="handover-detail-actions">
-      {['DRAFT','SUPPLEMENT_REQUESTED','RESUBMITTED'].includes(data.status)&&<button onClick={()=>openSign('giver')}>Người giao ký và gửi phiếu</button>}
-      {['PENDING_RECEIVER_CONFIRMATION','OVERDUE'].includes(data.status)&&<><button onClick={()=>openSign('receiver')}>Người nhận đăng nhập, kiểm kê và ký</button><button className="secondary" onClick={()=>openSign('supplement')}>Yêu cầu bổ sung</button></>}
-      {data.status==='PENDING_MANAGEMENT_APPROVAL'&&<><button onClick={()=>openSign('management')}>BGĐ / Phó BGĐ cơ sở ký duyệt</button><button className="secondary danger" onClick={()=>openSign('management-return')}>Trả lại cho người nhận xử lý</button></>}
-      {data.status==='PENDING_ACCOUNTING_APPROVAL'&&<><button onClick={()=>openSign('accounting')}>Kế toán kiểm tra và ký nghiệm thu</button><button className="secondary danger" onClick={()=>openSign('accounting-return')}>Trả lại để điều chỉnh</button></>}
-      {['MANAGEMENT_CHANGES_REQUESTED','ACCOUNTING_CHANGES_REQUESTED'].includes(data.status)&&<button onClick={()=>openSign('amendment')}>Người nhận tạo bản điều chỉnh và ký lại</button>}
+      {group==='reception'&&['DRAFT','SUPPLEMENT_REQUESTED','RESUBMITTED'].includes(data.status)&&<button onClick={()=>openSign('giver')}>Người giao ký và gửi phiếu</button>}
+      {group==='reception'&&['PENDING_RECEIVER_CONFIRMATION','OVERDUE'].includes(data.status)&&<><button onClick={()=>openSign('receiver')}>Người nhận đăng nhập, kiểm kê và ký</button><button className="secondary" onClick={()=>openSign('supplement')}>Yêu cầu bổ sung</button></>}
+      {group==='management'&&data.status==='PENDING_MANAGEMENT_APPROVAL'&&<><button onClick={()=>openSign('management')}>BGĐ / Phó BGĐ cơ sở ký duyệt</button><button className="secondary danger" onClick={()=>openSign('management-return')}>Trả lại cho người nhận xử lý</button></>}
+      {group==='accounting'&&data.status==='PENDING_ACCOUNTING_APPROVAL'&&<><button onClick={()=>openSign('accounting')}>Kế toán kiểm tra và ký nghiệm thu</button><button className="secondary danger" onClick={()=>openSign('accounting-return')}>Trả lại để điều chỉnh</button></>}
+      {group==='reception'&&['MANAGEMENT_CHANGES_REQUESTED','ACCOUNTING_CHANGES_REQUESTED'].includes(data.status)&&<button onClick={()=>openSign('amendment')}>Người nhận tạo bản điều chỉnh và ký lại</button>}
     </div>
 
     {signMode&&<div className="sign-dialog-backdrop" role="presentation" onMouseDown={event=>{if(event.currentTarget===event.target&&!actionPending)setSignMode(null)}}>

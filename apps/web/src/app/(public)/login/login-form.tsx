@@ -18,7 +18,7 @@ type BranchContext={
   activeSession:{id:string;branchId:string;profile:{fullName:string;employeeCode:string|null}}|null;
 };
 type EmployeeContext={
-  employee:{id:string;fullName:string;employeeCode:string|null;username:string};
+  employee:{id:string;fullName:string;employeeCode:string|null;username:string;role:{code:string;name:string}};
   branch:Branch;
   assignments:Assignment[];
 };
@@ -137,6 +137,8 @@ export function LoginForm(){
       localStorage.setItem('a25.branchCode',employeeContext?.branch.code??'');
       localStorage.setItem('a25.employeeName',employeeContext?.employee.fullName??'');
       localStorage.setItem('a25.employeeCode',employeeContext?.employee.employeeCode??'');
+      localStorage.setItem('a25.employeeRole',employeeContext?.employee.role.code??'RECEPTIONIST');
+      localStorage.setItem('a25.employeeRoleName',employeeContext?.employee.role.name??'Lễ tân');
       setEmployeePassword('');
       window.location.replace('/dashboard');
     }catch(cause){
@@ -147,6 +149,8 @@ export function LoginForm(){
   async function changeBranchAccount(){
     await createClient().auth.signOut();
     localStorage.removeItem('a25.workSessionId');
+    localStorage.removeItem('a25.employeeRole');
+    localStorage.removeItem('a25.employeeRoleName');
     localStorage.removeItem('a25.branchId');
     setBranchContext(null);
     setEmployeeContext(null);
@@ -159,6 +163,8 @@ export function LoginForm(){
     setEmployeeContext(null);
     setEmployeeUsername('');
     setEmployeePassword('');
+    localStorage.removeItem('a25.employeeRole');
+    localStorage.removeItem('a25.employeeRoleName');
     setError('');
     setStep('employee');
   }

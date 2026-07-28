@@ -3,15 +3,16 @@
 import {useEffect,useState} from 'react';
 import {LogoutButton} from '@/components/layout/logout-button';
 
-type SessionSummary={employeeName:string;employeeCode:string;branchName:string;branchCode:string};
+type SessionSummary={employeeName:string;employeeCode:string;employeeRole:string;branchName:string;branchCode:string};
 
 export default function SettingsPage(){
-  const[session,setSession]=useState<SessionSummary>({employeeName:'Nhân viên đang làm ca',employeeCode:'',branchName:'Chi nhánh đang hoạt động',branchCode:''});
+  const[session,setSession]=useState<SessionSummary>({employeeName:'Nhân viên đang làm ca',employeeCode:'',employeeRole:'',branchName:'Chi nhánh đang hoạt động',branchCode:''});
 
   useEffect(()=>{
     const timer=window.setTimeout(()=>setSession({
       employeeName:localStorage.getItem('a25.employeeName')||'Nhân viên đang làm ca',
       employeeCode:localStorage.getItem('a25.employeeCode')||'',
+      employeeRole:localStorage.getItem('a25.employeeRoleName')||'',
       branchName:localStorage.getItem('a25.branchName')||'Chi nhánh đang hoạt động',
       branchCode:localStorage.getItem('a25.branchCode')||''
     }),0);
@@ -21,7 +22,7 @@ export default function SettingsPage(){
   return <div className="settings-page">
     <header className="settings-heading"><span>CÁ NHÂN & PHIÊN LÀM VIỆC</span><h1>Cài đặt</h1><p>Quản lý người đang trực và tài khoản chi nhánh trên thiết bị này.</p></header>
     <section className="session-account-card" aria-label="Phiên làm việc hiện tại">
-      <div className="session-person"><i aria-hidden="true">NV</i><div><small>NHÂN VIÊN ĐANG TRỰC</small><strong>{session.employeeName}</strong>{session.employeeCode&&<span>{session.employeeCode}</span>}</div></div>
+      <div className="session-person"><i aria-hidden="true">NV</i><div><small>NHÂN VIÊN ĐANG TRỰC</small><strong>{session.employeeName}</strong>{(session.employeeCode||session.employeeRole)&&<span>{[session.employeeCode,session.employeeRole].filter(Boolean).join(' · ')}</span>}</div></div>
       <div className="session-divider"/>
       <div className="session-person"><i aria-hidden="true">CN</i><div><small>TÀI KHOẢN CHI NHÁNH</small><strong>{session.branchName}</strong>{session.branchCode&&<span>{session.branchCode}</span>}</div></div>
     </section>

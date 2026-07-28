@@ -148,3 +148,31 @@ Kết quả xác minh:
 | Supabase migration parity      | **PASS**                         |
 
 Ghi chú môi trường: máy kiểm tra đang chạy Node.js 24.14.0 nên pnpm hiển thị cảnh báo khác với Node.js 22.14.0 được khóa cho Render; tất cả lệnh xác minh vẫn PASS.
+
+## Giao diện theo vai trò nhân viên - 28/07/2026
+
+Trạng thái: **HOÀN TẤT**
+
+- Vai trò được lấy từ `branch_memberships` của đúng nhân viên và đúng chi nhánh đang đăng nhập.
+- Lễ tân thấy Tổng quan, Chi tiết, Công việc, Ký nhận và chức năng tạo/nhận bàn giao.
+- BGĐ/Phó BGĐ/Quản lý chi nhánh thấy trung tâm phê duyệt, danh sách phiếu chờ BGĐ và báo cáo.
+- Kế toán/Kế toán trưởng thấy danh sách nghiệm thu, Tài chính - quỹ và báo cáo.
+- Danh sách bàn giao tự lọc theo trạng thái cần xử lý của từng vai trò; BGĐ và kế toán không thấy nút tạo phiếu.
+- Trang Cài đặt hiển thị vai trò hiện tại; đăng xuất nhân viên xóa toàn bộ ngữ cảnh vai trò.
+- Backend vẫn là lớp kiểm soát quyền bắt buộc; việc ẩn/hiện giao diện không thay thế kiểm tra quyền API.
+
+Migration:
+
+- `supabase/migrations/20260728000600_employee_role_context.sql`
+- **PASS** - đã áp dụng thành công lên Supabase linked project.
+
+Kết quả xác minh:
+
+| Kiểm tra | Kết quả |
+| --- | --- |
+| `pnpm typecheck` | **PASS** - 8/8 packages |
+| `pnpm lint` | **PASS** - 8/8 packages |
+| `pnpm --filter @a25/web build` | **PASS** - 30 static pages |
+| `pnpm --filter @a25/api build` | **PASS** |
+| Web unit tests | **FAIL (môi trường)** - Vitest/esbuild bị sandbox Windows từ chối đọc thư mục cha trước khi tải cấu hình; không có test nào được chạy |
+| Supabase `db push --linked` | **PASS** |
