@@ -60,6 +60,14 @@ export default function RoomAttentionTagsPage() {
   useEffect(() => {
     queueMicrotask(() => void load());
   }, [load]);
+  useEffect(() => {
+    if (!showCreate) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [showCreate]);
 
   async function createTag(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
