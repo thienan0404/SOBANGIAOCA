@@ -19,12 +19,16 @@ function dateInVietnam(value:string){
 function formatDate(value:string){
   return new Intl.DateTimeFormat('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',dateStyle:'short',timeStyle:'short'}).format(new Date(value));
 }
+function normalizeSearch(value:string){
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('vi').trim();
+}
 
 export function HandoverList({view='reception',showFilters=false}:{view?:RoleGroup;showFilters?:boolean}){
   const {data,isLoading,isFetching,error,refetch}=useHandovers();
   const[giverId,setGiverId]=useState('');
   const[receiverId,setReceiverId]=useState('');
   const[handoverDate,setHandoverDate]=useState('');
+  const[searchQuery,setSearchQuery]=useState('');
   const roleVisible=useMemo(()=>(data??[]).filter(item=>{
     if(view==='management')return item.status==='PENDING_MANAGEMENT_APPROVAL';
     if(view==='accounting')return item.status==='PENDING_ACCOUNTING_APPROVAL';
@@ -32,9 +36,12 @@ export function HandoverList({view='reception',showFilters=false}:{view?:RoleGro
   }),[data,view]);
   const giverOptions=useMemo(()=>uniquePeople(roleVisible.map(item=>item.giver)),[roleVisible]);
   const receiverOptions=useMemo(()=>uniquePeople(roleVisible.map(item=>item.receiver)),[roleVisible]);
-  const visible=useMemo(()=>roleVisible.filter(item=>(!giverId||item.giver.id===giverId)&&(!receiverId||item.receiver.id===receiverId)&&(!handoverDate||dateInVietnam(item.createdAt)===handoverDate)),[giverId,handoverDate,receiverId,roleVisible]);
-  const hasFilters=Boolean(giverId||receiverId||handoverDate);
-  const clearFilters=()=>{setGiverId('');setReceiverId('');setHandoverDate('')};
+  const visible=useMemo(()=>{
+    const query=normalizeSearch(searchQuery);
+    return roleVisible.filter(item=>(!giverId||item.giver.id===giverId)&&(!receiverId||item.receiver.id===receiverId)&&(!handoverDate||dateInVietnam(item.createdAt)===handoverDate)&&(!query||normalizeSearch([item.code,item.giver.name,item.receiver.name,item.searchContent].join(' ')).includes(query)));
+  },[giverId,handoverDate,receiverId,roleVisible,searchQuery]);
+  const hasFilters=Boolean(giverId||receiverId||handoverDate||searchQuery);
+  const clearFilters=()=>{setGiverId('');setReceiverId('');setHandoverDate('');setSearchQuery('')};
 
   if(isLoading)return <div className="handover-skeleton" aria-label="Đang tải"><i/><i/><i/></div>;
   if(error)return <div role="alert" className="empty error-state"><div className="empty-icon">!</div><strong>Chưa thể kết nối dữ liệu</strong><p>{error.message}</p><button disabled={isFetching} onClick={()=>void refetch()}>{isFetching?'Đang thử lại...':'Thử lại'}</button></div>;
@@ -49,6 +56,7 @@ export function HandoverList({view='reception',showFilters=false}:{view?:RoleGro
   }
   return <>
     {showFilters&&<section className="handover-list-filters" aria-label="Lọc danh sách bàn giao">
+      <label className="handover-search-field">Tìm nội dung<input type="search" value={searchQuery} onChange={event=>setSearchQuery(event.target.value)} placeholder="Mã phiếu, ghi chú, công việc..." autoComplete="off"/></label>
       <div><label>Người giao<select value={giverId} onChange={event=>setGiverId(event.target.value)}><option value="">Tất cả người giao</option>{giverOptions.map(person=><option key={person.id} value={person.id}>{person.name}</option>)}</select></label><label>Người nhận<select value={receiverId} onChange={event=>setReceiverId(event.target.value)}><option value="">Tất cả người nhận</option>{receiverOptions.map(person=><option key={person.id} value={person.id}>{person.name}</option>)}</select></label></div>
       <label>Ngày giao ca<input type="date" value={handoverDate} onChange={event=>setHandoverDate(event.target.value)}/></label>
       {hasFilters&&<button type="button" onClick={clearFilters}>Xóa bộ lọc</button>}
