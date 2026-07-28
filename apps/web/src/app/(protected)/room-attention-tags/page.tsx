@@ -38,6 +38,13 @@ export default function RoomAttentionTagsPage() {
   const [error, setError] = useState("");
   const [creating, setCreating] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const activeFilterCount = [
+    filters.active === false,
+    Boolean(filters.priority),
+    Boolean(filters.tagType),
+    Boolean(filters.expectedCheckOutDate),
+  ].filter(Boolean).length;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -77,15 +84,20 @@ export default function RoomAttentionTagsPage() {
 
   return (
     <div className="room-tags-page">
-      <header className="inner-page-title room-tags-title">
-        <div>
+      <header className="room-tags-hero">
+        <div className="room-tags-hero-top">
           <span className="page-kicker">THEO DÕI LƯU TRÚ</span>
-          <h1>Tag phòng cần lưu ý</h1>
-          <p>Thông tin dùng chung giữa các ca tại chi nhánh.</p>
+          <button
+            type="button"
+            className="room-tag-create-button"
+            onClick={() => setShowCreate(true)}
+          >
+            <span aria-hidden="true">＋</span>
+            Tạo tag
+          </button>
         </div>
-        <button className="header-create" onClick={() => setShowCreate(true)}>
-          ＋ Tạo tag
-        </button>
+        <h1>Tag phòng cần lưu ý</h1>
+        <p>Thông tin dùng chung giữa các ca tại chi nhánh.</p>
       </header>
       <section className="room-tag-alert-summary">
         <div>
@@ -105,92 +117,132 @@ export default function RoomAttentionTagsPage() {
           <span>Cần cập nhật</span>
         </div>
       </section>
-      <section className="room-tag-filters" aria-label="Bộ lọc tag phòng">
-        <div>
-          <label>
-            Danh sách
-            <select
-              value={filters.active === false ? "all" : "active"}
-              onChange={(e) =>
-                setFilters((value) => ({
-                  ...value,
-                  active: e.target.value === "active",
-                  status: "",
-                }))
-              }
-            >
-              <option value="active">Đang hoạt động</option>
-              <option value="all">Tất cả lịch sử</option>
-            </select>
-          </label>
-          <label>
-            Mức độ
-            <select
-              value={filters.priority ?? ""}
-              onChange={(e) =>
-                setFilters((value) => ({
-                  ...value,
-                  priority: e.target.value as RoomTagPriority | "",
-                }))
-              }
-            >
-              <option value="">Tất cả</option>
-              {priorities.map((value) => (
-                <option key={value} value={value}>
-                  {roomTagPriorityLabels[value]}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        <div>
-          <label>
-            Loại tag
-            <select
-              value={filters.tagType ?? ""}
-              onChange={(e) =>
-                setFilters((value) => ({
-                  ...value,
-                  tagType: e.target.value as RoomTagType | "",
-                }))
-              }
-            >
-              <option value="">Tất cả</option>
-              {types.map((value) => (
-                <option key={value} value={value}>
-                  {roomTagTypeLabels[value]}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Số phòng
-            <input
-              value={filters.roomNumber ?? ""}
-              onChange={(e) =>
-                setFilters((value) => ({
-                  ...value,
-                  roomNumber: e.target.value,
-                }))
-              }
-              placeholder="Ví dụ 512"
-            />
-          </label>
-        </div>
-        <label>
-          Check-out dự kiến
+      <div className="room-tag-filter-bar">
+        <label className="room-tag-room-search">
+          <span aria-hidden="true">⌕</span>
           <input
-            type="date"
-            value={filters.expectedCheckOutDate ?? ""}
+            value={filters.roomNumber ?? ""}
             onChange={(e) =>
               setFilters((value) => ({
                 ...value,
-                expectedCheckOutDate: e.target.value,
+                roomNumber: e.target.value,
               }))
             }
+            placeholder="Tìm theo số phòng"
+            aria-label="Tìm theo số phòng"
           />
         </label>
-      </section>
+        <button
+          type="button"
+          className={showFilters ? "is-open" : ""}
+          onClick={() => setShowFilters((value) => !value)}
+          aria-expanded={showFilters}
+          aria-controls="room-tag-advanced-filters"
+        >
+          <span aria-hidden="true">☷</span>
+          Bộ lọc
+          {activeFilterCount > 0 && <b>{activeFilterCount}</b>}
+        </button>
+      </div>
+      {showFilters && (
+        <section
+          id="room-tag-advanced-filters"
+          className="room-tag-filters"
+          aria-label="Bộ lọc tag phòng"
+        >
+          <header>
+            <div>
+              <strong>Lọc nâng cao</strong>
+              <span>Thu hẹp danh sách tag cần theo dõi</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setFilters({ active: true })}
+              disabled={activeFilterCount === 0}
+            >
+              Đặt lại
+            </button>
+          </header>
+          <div>
+            <label>
+              Danh sách
+              <select
+                value={filters.active === false ? "all" : "active"}
+                onChange={(e) =>
+                  setFilters((value) => ({
+                    ...value,
+                    active: e.target.value === "active",
+                    status: "",
+                  }))
+                }
+              >
+                <option value="active">Đang hoạt động</option>
+                <option value="all">Tất cả lịch sử</option>
+              </select>
+            </label>
+            <label>
+              Mức độ
+              <select
+                value={filters.priority ?? ""}
+                onChange={(e) =>
+                  setFilters((value) => ({
+                    ...value,
+                    priority: e.target.value as RoomTagPriority | "",
+                  }))
+                }
+              >
+                <option value="">Tất cả</option>
+                {priorities.map((value) => (
+                  <option key={value} value={value}>
+                    {roomTagPriorityLabels[value]}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div>
+            <label>
+              Loại tag
+              <select
+                value={filters.tagType ?? ""}
+                onChange={(e) =>
+                  setFilters((value) => ({
+                    ...value,
+                    tagType: e.target.value as RoomTagType | "",
+                  }))
+                }
+              >
+                <option value="">Tất cả</option>
+                {types.map((value) => (
+                  <option key={value} value={value}>
+                    {roomTagTypeLabels[value]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Check-out dự kiến
+              <input
+                type="date"
+                value={filters.expectedCheckOutDate ?? ""}
+                onChange={(e) =>
+                  setFilters((value) => ({
+                    ...value,
+                    expectedCheckOutDate: e.target.value,
+                  }))
+                }
+              />
+            </label>
+          </div>
+        </section>
+      )}
+      <div className="room-tag-list-heading">
+        <div>
+          <span>TAG ĐANG THEO DÕI</span>
+          <h2>Danh sách lưu ý</h2>
+        </div>
+        {!loading && <b>{tags.length} tag</b>}
+      </div>
       {error && (
         <div className="room-tag-error" role="alert">
           ! {error}
