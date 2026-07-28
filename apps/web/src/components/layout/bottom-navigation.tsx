@@ -24,7 +24,7 @@ const navigation:Record<RoleGroup,Array<{icon:string;label:string;href:string}>>
     {icon:'⌂',label:'Tổng quan',href:'/dashboard'},
     {icon:'✓',label:'Nghiệm thu',href:'/handovers'},
     {icon:'₫',label:'Tài chính',href:'/finance'},
-    {icon:'▥',label:'Báo cáo',href:'/reports'},
+    {icon:'✎',label:'Chữ ký',href:'/handovers/participants'},
     {icon:'⚙',label:'Cài đặt',href:'/settings'}
   ]
 };
