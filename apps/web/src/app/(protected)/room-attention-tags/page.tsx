@@ -321,10 +321,17 @@ export default function RoomAttentionTagsPage() {
                 ×
               </button>
             </header>
-            <div className="form-grid two">
+            <div className="room-tag-form-content">
+              <div className="form-grid two">
               <label>
                 Số phòng
-                <input name="roomNumber" required maxLength={20} />
+                <input
+                  name="roomNumber"
+                  required
+                  maxLength={20}
+                  inputMode="numeric"
+                  placeholder="Ví dụ 512"
+                />
               </label>
               <label>
                 Tên khách
@@ -335,7 +342,7 @@ export default function RoomAttentionTagsPage() {
               Mã booking / lượt lưu trú
               <input name="stayReference" required maxLength={100} />
             </label>
-            <div className="form-grid two">
+            <div className="form-grid two room-tag-date-grid">
               <label>
                 Ngày check-in
                 <input
@@ -401,9 +408,12 @@ export default function RoomAttentionTagsPage() {
               Không dùng nhãn cảm tính. Hệ thống sẽ gợi ý cập nhật tag cũ nếu
               cùng lượt lưu trú, phòng và loại vấn đề.
             </p>
-            <button className="room-tag-submit" disabled={creating}>
-              {creating ? "Đang tạo..." : "Tạo tag phòng"}
-            </button>
+            </div>
+            <footer className="room-tag-form-actions">
+              <button className="room-tag-submit" disabled={creating}>
+                {creating ? "Đang tạo..." : "Tạo tag phòng"}
+              </button>
+            </footer>
           </form>
         </div>
       )}
