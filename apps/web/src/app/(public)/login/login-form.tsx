@@ -45,6 +45,12 @@ async function rpcData<T>(name:string,args?:Record<string,unknown>):Promise<T>{
   return data as T;
 }
 
+const employeeSessionKeys=['a25.workSessionId','a25.employeeName','a25.employeeCode','a25.employeeRole','a25.employeeRoleName'] as const;
+
+function clearEmployeeBrowserSession(){
+  for(const key of employeeSessionKeys)sessionStorage.removeItem(key);
+}
+
 function warmApi(){
   const apiUrl=process.env.NEXT_PUBLIC_API_URL;
   if(apiUrl)void fetch(`${apiUrl}/health`,{cache:'no-store'}).catch(()=>undefined);
@@ -64,20 +70,28 @@ export function LoginForm(){
 
   async function loadBranchContext(){
     const context=await rpcData<BranchContext>('a25_branch_login_context');
-    setBranchContext(context);
-    if(context.activeSession){
-      localStorage.setItem('a25.workSessionId',context.activeSession.id);
-      localStorage.setItem('a25.branchId',context.activeSession.branchId);
-      localStorage.setItem('a25.employeeName',context.activeSession.profile.fullName);
-      localStorage.setItem('a25.employeeCode',context.activeSession.profile.employeeCode??'');
+    localStorage.setItem('a25.branchId',context.branch.id);
+    localStorage.setItem('a25.branchName',context.branch.name);
+    localStorage.setItem('a25.branchCode',context.branch.code);
+    const browserWorkSessionId=sessionStorage.getItem('a25.workSessionId');
+    if(context.activeSession&&browserWorkSessionId===context.activeSession.id){
+      sessionStorage.setItem('a25.employeeName',context.activeSession.profile.fullName);
+      sessionStorage.setItem('a25.employeeCode',context.activeSession.profile.employeeCode??'');
       window.location.replace('/dashboard');
       return;
     }
+    if(context.activeSession){
+      await rpcData<number>('a25_end_work_session');
+      clearEmployeeBrowserSession();
+      context.activeSession=null;
+    }
+    setBranchContext(context);
     setStep('employee');
   }
 
   useEffect(()=>{
     warmApi();
+    for(const key of employeeSessionKeys)localStorage.removeItem(key);
     void createClient().auth.getSession().then(({data})=>{
       if(data.session)void loadBranchContext().catch(()=>undefined);
     });
@@ -131,14 +145,14 @@ export function LoginForm(){
         p_password:employeePassword,
         p_shift_instance_id:assignment.shift.id
       });
-      localStorage.setItem('a25.workSessionId',session.id);
+      sessionStorage.setItem('a25.workSessionId',session.id);
       localStorage.setItem('a25.branchId',session.branchId);
       localStorage.setItem('a25.branchName',employeeContext?.branch.name??'');
       localStorage.setItem('a25.branchCode',employeeContext?.branch.code??'');
-      localStorage.setItem('a25.employeeName',employeeContext?.employee.fullName??'');
-      localStorage.setItem('a25.employeeCode',employeeContext?.employee.employeeCode??'');
-      localStorage.setItem('a25.employeeRole',employeeContext?.employee.role.code??'RECEPTIONIST');
-      localStorage.setItem('a25.employeeRoleName',employeeContext?.employee.role.name??'Lễ tân');
+      sessionStorage.setItem('a25.employeeName',employeeContext?.employee.fullName??'');
+      sessionStorage.setItem('a25.employeeCode',employeeContext?.employee.employeeCode??'');
+      sessionStorage.setItem('a25.employeeRole',employeeContext?.employee.role.code??'RECEPTIONIST');
+      sessionStorage.setItem('a25.employeeRoleName',employeeContext?.employee.role.name??'Lễ tân');
       setEmployeePassword('');
       window.location.replace('/dashboard');
     }catch(cause){
@@ -148,10 +162,11 @@ export function LoginForm(){
 
   async function changeBranchAccount(){
     await createClient().auth.signOut();
-    localStorage.removeItem('a25.workSessionId');
-    localStorage.removeItem('a25.employeeRole');
-    localStorage.removeItem('a25.employeeRoleName');
+    clearEmployeeBrowserSession();
+
     localStorage.removeItem('a25.branchId');
+    localStorage.removeItem('a25.branchName');
+    localStorage.removeItem('a25.branchCode');
     setBranchContext(null);
     setEmployeeContext(null);
     setEmployeeUsername('');
@@ -163,8 +178,8 @@ export function LoginForm(){
     setEmployeeContext(null);
     setEmployeeUsername('');
     setEmployeePassword('');
-    localStorage.removeItem('a25.employeeRole');
-    localStorage.removeItem('a25.employeeRoleName');
+    sessionStorage.removeItem('a25.employeeRole');
+    sessionStorage.removeItem('a25.employeeRoleName');
     setError('');
     setStep('employee');
   }

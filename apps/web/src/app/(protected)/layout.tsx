@@ -16,12 +16,13 @@ export default function ProtectedLayout({children}:{children:React.ReactNode}){
       const{data}=await supabase.auth.getSession();
       if(!active)return;
       if(!data.session){window.location.replace(`/login?next=${encodeURIComponent(pathname)}`);return}
-      const workSessionId=localStorage.getItem('a25.workSessionId');
-      if(workSessionId){
-        const{data:context}=await supabase.rpc('a25_work_session_role',{p_work_session_id:workSessionId});
-        const session=context as {role?:{code:string;name:string}}|null;
-        if(session?.role){localStorage.setItem('a25.employeeRole',session.role.code);localStorage.setItem('a25.employeeRoleName',session.role.name)}
-      }
+      const workSessionId=sessionStorage.getItem('a25.workSessionId');
+      if(!workSessionId){window.location.replace('/login');return}
+      const{data:context}=await supabase.rpc('a25_work_session_role',{p_work_session_id:workSessionId});
+      const session=context as {role?:{code:string;name:string}}|null;
+      if(!session?.role){for(const key of ['a25.workSessionId','a25.employeeName','a25.employeeCode','a25.employeeRole','a25.employeeRoleName'])sessionStorage.removeItem(key);window.location.replace('/login');return}
+      sessionStorage.setItem('a25.employeeRole',session.role.code);
+      sessionStorage.setItem('a25.employeeRoleName',session.role.name);
       if(active)setReady(true);
     })();
     return()=>{active=false};

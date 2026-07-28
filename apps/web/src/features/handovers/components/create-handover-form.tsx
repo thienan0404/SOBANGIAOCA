@@ -34,9 +34,9 @@ export function CreateHandoverForm(){
         const device=JSON.parse(localStorage.getItem('a25.currentBranchDevice')??'null');
         const id=localStorage.getItem('a25.branchId')||device?.branch?.id||'';
         if(!id)throw new Error('Thiết bị chưa có thông tin chi nhánh');
-        setBranchId(id);setBranchName(localStorage.getItem('a25.branchName')||device?.branch?.name||'Chi nhánh đang làm việc');setGiverName(localStorage.getItem('a25.employeeName')||'Nhân viên lễ tân');
+        setBranchId(id);setBranchName(localStorage.getItem('a25.branchName')||device?.branch?.name||'Chi nhánh đang làm việc');setGiverName(sessionStorage.getItem('a25.employeeName')||'Nhân viên lễ tân');
         const applyContext=(context:HandoverFormContext)=>{
-          const currentCode=localStorage.getItem('a25.employeeCode');
+          const currentCode=sessionStorage.getItem('a25.employeeCode');
           const receivers=context.employees.filter(item=>(!currentCode||item.employeeCode!==currentCode)&&(!item.memberships?.length||item.memberships.some(membership=>membership.branchId===id&&membership.role.code==='RECEPTIONIST')));
           setEmployees(receivers);setReceiverId(value=>value||receivers[0]?.id||'');setShift(context.currentShift);
         };

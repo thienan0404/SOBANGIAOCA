@@ -84,7 +84,7 @@ function DetailContent(){
   function openSign(mode:SignMode){
     setActionError('');
     setSignMode(mode);
-    setSignatureText(mode==='receiver'?'':localStorage.getItem('a25.employeeName')||'');
+    setSignatureText(mode==='receiver'?'':sessionStorage.getItem('a25.employeeName')||'');
     setUsername('');
     setPassword('');
     setSupplementReason('');
@@ -111,7 +111,7 @@ function DetailContent(){
       if(signMode==='giver')await handoverApi.submit(id,signatureText);
       if(signMode==='receiver'){
         const result=await handoverApi.receiverSign(id,{username:username.trim(),password,signatureText,inventoryConfirmed:true});
-        localStorage.setItem('a25.workSessionId',result.workSession.id);localStorage.setItem('a25.branchId',result.workSession.branchId);localStorage.setItem('a25.employeeName',result.employee.fullName);localStorage.setItem('a25.employeeCode',result.employee.employeeCode??'');
+        sessionStorage.setItem('a25.workSessionId',result.workSession.id);localStorage.setItem('a25.branchId',result.workSession.branchId);sessionStorage.setItem('a25.employeeName',result.employee.fullName);sessionStorage.setItem('a25.employeeCode',result.employee.employeeCode??'');
       }
       if(signMode==='supplement')await handoverApi.receiverRequestSupplement(id,{username:username.trim(),password,reason:supplementReason.trim()});
       if(signMode==='management')await handoverApi.managementSign(id,signatureText);

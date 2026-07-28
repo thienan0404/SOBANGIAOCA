@@ -12,7 +12,7 @@ export default function Dashboard(){
   const[roleName,setRoleName]=useState('Lễ tân');
   const today=new Intl.DateTimeFormat('vi-VN',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric',timeZone:'Asia/Ho_Chi_Minh'}).format(new Date());
   useEffect(()=>{queueMicrotask(()=>{
-    setEmployee(localStorage.getItem('a25.employeeName')||'Nhân viên lễ tân');
+    setEmployee(sessionStorage.getItem('a25.employeeName')||'Nhân viên lễ tân');
     setBranch(localStorage.getItem('a25.branchName')||'Chi nhánh đang làm việc');
     const role=storedEmployeeRole();setGroup(roleGroup(role?.code));setRoleName(role?.name||'Lễ tân');
     const branchId=localStorage.getItem('a25.branchId');if(branchId)void handoverApi.formContext(branchId).catch(()=>undefined);

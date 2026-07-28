@@ -5,7 +5,7 @@ export async function apiRequest<T>(path:string,init?:RequestInit):Promise<T>{
   const{createClient}=await import('@/lib/supabase/client');
   const{data}=await createClient().auth.getSession();
   const accessToken=data.session?.access_token;
-  const workSessionId=typeof window==='undefined'?null:localStorage.getItem('a25.workSessionId');
+  const workSessionId=typeof window==='undefined'?null:sessionStorage.getItem('a25.workSessionId');
   const controller=new AbortController();
   const timeout=setTimeout(()=>controller.abort(),requestTimeoutMs);
   const abort=()=>controller.abort();

@@ -7,11 +7,11 @@ export function LogoutButton(){
   const[pending,setPending]=useState<'employee'|'branch'|null>(null);
 
   function clearEmployeeSession(){
-    localStorage.removeItem('a25.workSessionId');
-    localStorage.removeItem('a25.employeeName');
-    localStorage.removeItem('a25.employeeCode');
-    localStorage.removeItem('a25.employeeRole');
-    localStorage.removeItem('a25.employeeRoleName');
+    sessionStorage.removeItem('a25.workSessionId');
+    sessionStorage.removeItem('a25.employeeName');
+    sessionStorage.removeItem('a25.employeeCode');
+    sessionStorage.removeItem('a25.employeeRole');
+    sessionStorage.removeItem('a25.employeeRoleName');
   }
 
   async function handleEmployeeLogout(){

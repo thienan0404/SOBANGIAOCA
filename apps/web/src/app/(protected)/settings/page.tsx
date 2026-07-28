@@ -10,9 +10,9 @@ export default function SettingsPage(){
 
   useEffect(()=>{
     const timer=window.setTimeout(()=>setSession({
-      employeeName:localStorage.getItem('a25.employeeName')||'Nhân viên đang làm ca',
-      employeeCode:localStorage.getItem('a25.employeeCode')||'',
-      employeeRole:localStorage.getItem('a25.employeeRoleName')||'',
+      employeeName:sessionStorage.getItem('a25.employeeName')||'Nhân viên đang làm ca',
+      employeeCode:sessionStorage.getItem('a25.employeeCode')||'',
+      employeeRole:sessionStorage.getItem('a25.employeeRoleName')||'',
       branchName:localStorage.getItem('a25.branchName')||'Chi nhánh đang hoạt động',
       branchCode:localStorage.getItem('a25.branchCode')||''
     }),0);

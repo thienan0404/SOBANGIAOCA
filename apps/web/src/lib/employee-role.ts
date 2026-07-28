@@ -12,7 +12,7 @@ export function roleGroup(code?:string|null):RoleGroup{
 
 export function storedEmployeeRole():EmployeeRole|null{
   if(typeof window==='undefined')return null;
-  const code=localStorage.getItem('a25.employeeRole');
+  const code=sessionStorage.getItem('a25.employeeRole');
   if(!code)return null;
-  return{code,name:localStorage.getItem('a25.employeeRoleName')||code};
+  return{code,name:sessionStorage.getItem('a25.employeeRoleName')||code};
 }
