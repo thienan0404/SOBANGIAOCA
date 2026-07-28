@@ -1,7 +1,9 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from "@nestjs/common";
@@ -34,6 +36,8 @@ type VerifiedEmployee = {
 
 @Injectable()
 export class HandoversService {
+  private readonly logger = new Logger(HandoversService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   private async context(userId: string, branchId: string) {
@@ -496,7 +500,8 @@ export class HandoversService {
         "Không tìm thấy ca phù hợp để chuyển phiên cho người nhận",
       );
 
-    return this.prisma.$transaction(async (tx) => {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
       await tx.workSession.update({
         where: { id: giverSession.id },
         data: { status: "TRANSFERRED", endedAt: now },
@@ -597,7 +602,28 @@ export class HandoversService {
         employee,
         status: HandoverStatus.PENDING_MANAGEMENT_APPROVAL,
       };
-    });
+      });
+    } catch (error) {
+      this.logger.error(
+        `Receiver signature transfer failed [handoverId=${id}, requestId=${evidence.requestId ?? "n/a"}]`,
+        error instanceof Error ? error.stack : String(error),
+      );
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      )
+        throw new ConflictException(
+          "Người nhận đã có một phiên làm việc đang hoạt động. Vui lòng tải lại.",
+        );
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2025"
+      )
+        throw new ConflictException(
+          "Phiếu hoặc phiên làm việc vừa được thay đổi. Vui lòng tải lại.",
+        );
+      throw error;
+    }
   }
 
   async receiverRequestSupplement(
