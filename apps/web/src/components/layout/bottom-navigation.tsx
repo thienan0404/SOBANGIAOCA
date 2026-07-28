@@ -11,6 +11,7 @@ const navigation:Record<RoleGroup,Array<{icon:string;label:string;href:string}>>
     {icon:'▤',label:'Chi tiết',href:'/handovers'},
     {icon:'☑',label:'Công việc',href:'/handovers/pending-receive'},
     {icon:'✎',label:'Ký nhận',href:'/handovers/participants'},
+    {icon:'!',label:'Lưu ý phòng',href:'/room-attention-tags'},
     {icon:'⚙',label:'Cài đặt',href:'/settings'}
   ],
   management:[
@@ -18,6 +19,7 @@ const navigation:Record<RoleGroup,Array<{icon:string;label:string;href:string}>>
     {icon:'✓',label:'Chờ duyệt',href:'/handovers'},
     {icon:'▥',label:'Báo cáo',href:'/reports'},
     {icon:'✎',label:'Chữ ký',href:'/handovers/participants'},
+    {icon:'!',label:'Lưu ý phòng',href:'/room-attention-tags'},
     {icon:'⚙',label:'Cài đặt',href:'/settings'}
   ],
   accounting:[

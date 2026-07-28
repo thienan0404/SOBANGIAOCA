@@ -40,6 +40,34 @@ URGENT
 
 @@map("item_priority")
 }
+enum RoomAttentionTagType {
+SPECIAL_REQUEST
+EXTRA_CARE
+ROOM_ISSUE
+GUEST_DEBT
+WAKE_UP
+TRANSPORT
+GUEST_ASSET
+OTHER
+
+@@map("room_attention_tag_type")
+}
+enum RoomAttentionPriority {
+NORMAL
+IMPORTANT
+URGENT
+
+@@map("room_attention_priority")
+}
+enum RoomAttentionStatus {
+OPEN
+IN_PROGRESS
+RESOLVED
+CLOSED
+CANCELLED
+
+@@map("room_attention_status")
+}
 
 model Organization {
 id String @id @default(uuid()) @db.Uuid
@@ -61,6 +89,7 @@ handovers Handover[]
 shifts ShiftInstance[]
 workSessions WorkSession[]
 devices BranchDevice[]
+roomAttentionTags RoomAttentionTag[]
 @@unique([organizationId,code])
 @@map("branches")
 }
@@ -81,6 +110,10 @@ createdHandovers Handover[] @relation("HandoverCreator")
 participants HandoverParticipant[]
 registeredDevices BranchDevice[] @relation("RegisteredBranchDevices")
 employeeCredential EmployeeCredential?
+createdRoomAttentionTags RoomAttentionTag[] @relation("CreatedRoomAttentionTags")
+closedRoomAttentionTags RoomAttentionTag[] @relation("ClosedRoomAttentionTags")
+roomAttentionUpdates RoomAttentionTagUpdate[]
+acknowledgedHandoverRoomTags HandoverRoomAttentionTag[]
 @@map("profiles")
 }
 model EmployeeCredential {
@@ -140,6 +173,8 @@ branch Branch @relation(fields:[branchId],references:[id])
 handovers Handover[]
 assignments ShiftAssignment[]
 workSessions WorkSession[]
+roomAttentionTags RoomAttentionTag[]
+roomAttentionUpdates RoomAttentionTagUpdate[]
 @@index([branchId,startsAt])
 @@map("shift_instances")
 }
@@ -167,6 +202,8 @@ actualStart DateTime @default(now()) @map("actual_start") @db.Timestamptz
 endedAt DateTime? @map("ended_at") @db.Timestamptz
 transferredFromSessionId String? @map("transferred_from_session_id") @db.Uuid
 createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+roomAttentionTags RoomAttentionTag[]
+roomAttentionUpdates RoomAttentionTagUpdate[]
 profile Profile @relation("EmployeeWorkSessions",fields:[profileId],references:[id])
 authenticator Profile @relation("BranchAccountWorkSessions",fields:[authenticatedBy],references:[id])
 branch Branch @relation(fields:[branchId],references:[id])
@@ -200,6 +237,7 @@ participants HandoverParticipant[]
 items HandoverItem[]
 amendments HandoverAmendment[]
 checklistResults ChecklistResult[]
+roomAttentionTags HandoverRoomAttentionTag[]
 @@index([branchId,status,createdAt])
 @@map("handovers")
 }
@@ -291,4 +329,71 @@ idempotencyKey String @unique @map("idempotency_key")
 processedAt DateTime? @map("processed_at") @db.Timestamptz
 createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 @@map("outbox_events")
+}
+
+model RoomAttentionTag {
+id String @id @default(uuid()) @db.Uuid
+organizationId String @map("organization_id") @db.Uuid
+branchId String @map("branch_id") @db.Uuid
+stayReference String @map("stay_reference")
+roomNumber String @map("room_number")
+guestName String @map("guest_name")
+checkInDate DateTime @map("check_in_date") @db.Date
+expectedCheckOutDate DateTime @map("expected_check_out_date") @db.Date
+tagType RoomAttentionTagType @map("tag_type")
+priority RoomAttentionPriority @default(NORMAL)
+title String
+details String
+status RoomAttentionStatus @default(OPEN)
+createdById String @map("created_by") @db.Uuid
+createdWorkSessionId String @map("created_work_session_id") @db.Uuid
+createdShiftInstanceId String @map("created_shift_instance_id") @db.Uuid
+closedById String? @map("closed_by") @db.Uuid
+closedAt DateTime? @map("closed_at") @db.Timestamptz
+closeReason String? @map("close_reason")
+finalResult String? @map("final_result")
+createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+branch Branch @relation(fields:[branchId],references:[id])
+createdBy Profile @relation("CreatedRoomAttentionTags",fields:[createdById],references:[id])
+closedBy Profile? @relation("ClosedRoomAttentionTags",fields:[closedById],references:[id])
+createdWorkSession WorkSession @relation(fields:[createdWorkSessionId],references:[id])
+createdShiftInstance ShiftInstance @relation(fields:[createdShiftInstanceId],references:[id])
+updates RoomAttentionTagUpdate[]
+handoverLinks HandoverRoomAttentionTag[]
+@@index([branchId,status,priority,expectedCheckOutDate,updatedAt])
+@@map("room_attention_tags")
+}
+model RoomAttentionTagUpdate {
+id String @id @default(uuid()) @db.Uuid
+tagId String @map("tag_id") @db.Uuid
+content String
+action String
+actorId String @map("actor_id") @db.Uuid
+workSessionId String @map("work_session_id") @db.Uuid
+shiftInstanceId String @map("shift_instance_id") @db.Uuid
+oldValues Json? @map("old_values")
+newValues Json? @map("new_values")
+createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+tag RoomAttentionTag @relation(fields:[tagId],references:[id],onDelete:Restrict)
+actor Profile @relation(fields:[actorId],references:[id])
+workSession WorkSession @relation(fields:[workSessionId],references:[id])
+shiftInstance ShiftInstance @relation(fields:[shiftInstanceId],references:[id])
+@@index([tagId,createdAt])
+@@map("room_attention_tag_updates")
+}
+model HandoverRoomAttentionTag {
+id String @id @default(uuid()) @db.Uuid
+handoverId String @map("handover_id") @db.Uuid
+tagId String @map("tag_id") @db.Uuid
+snapshot Json
+acknowledgedById String? @map("acknowledged_by") @db.Uuid
+acknowledgedAt DateTime? @map("acknowledged_at") @db.Timestamptz
+createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+handover Handover @relation(fields:[handoverId],references:[id],onDelete:Restrict)
+tag RoomAttentionTag @relation(fields:[tagId],references:[id],onDelete:Restrict)
+acknowledgedBy Profile? @relation(fields:[acknowledgedById],references:[id])
+@@unique([handoverId,tagId])
+@@index([handoverId])
+@@map("handover_room_attention_tags")
 }

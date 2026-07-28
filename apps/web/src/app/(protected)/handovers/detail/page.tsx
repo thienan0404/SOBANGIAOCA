@@ -32,7 +32,8 @@ const roleLabels:Record<string,string>={
 const checklistLabels:Record<string,string>={
   GUEST_NOTES:'Thông tin khách và công việc',
   CASH:'Tiền mặt, thu và chi',
-  KEYS:'Chìa khóa và tài sản quầy'
+  KEYS:'Chìa khóa và tài sản quầy',
+  ROOM_ATTENTION_TAGS:'Tag phòng cần ca sau tiếp nhận'
 };
 
 function SignatureCard({type,participant}:{
@@ -80,6 +81,7 @@ function DetailContent(){
   const supervisor=participant('SUPERVISOR');
   const approver=participant('APPROVER');
   const inventory=data.checklistResults??[];
+  const roomTags=data.roomAttentionTags??[];
 
   function openSign(mode:SignMode){
     setActionError('');
@@ -148,6 +150,8 @@ function DetailContent(){
 
     <section className="handover-section detail-block"><div className="section-number">III</div><h2>Công việc bàn giao</h2>{tasks.length?<div className="task-summary-list">{tasks.map(task=><article key={task.id}><div><span>{task.priority==='URGENT'?'Khẩn cấp':task.priority==='HIGH'?'Ưu tiên cao':'Trung bình'}</span><strong>{task.title}</strong>{task.roomNumber&&<small>Phòng {task.roomNumber}</small>}</div><p>{task.details}</p><i>✓</i></article>)}</div>:<p className="section-note">Không có công việc phát sinh cần chuyển tiếp.</p>}</section>
 
+    {roomTags.length>0&&<section className="handover-section detail-block handover-room-tags"><div className="section-number">LƯU Ý</div><h2>Tag phòng cần ca sau tiếp nhận</h2><p className="section-note">Tag đang hoạt động tại thời điểm lập phiếu. Người nhận phải đọc và tiếp nhận trước khi ký.</p><div className="handover-room-tag-list">{roomTags.map(item=><article key={item.id} className={`priority-${item.snapshot.priority.toLowerCase()}`}><div><span>Phòng {item.snapshot.roomNumber}</span><b>{item.snapshot.priority==='URGENT'?'Khẩn cấp':item.snapshot.priority==='IMPORTANT'?'Quan trọng':'Bình thường'}</b></div><strong>{item.snapshot.title}</strong><p>{item.snapshot.guestName} · {item.snapshot.stayReference}</p><small>{item.snapshot.details}</small>{item.acknowledgedAt&&<em>Người nhận đã tiếp nhận ✓</em>}</article>)}</div></section>}
+
     <section className="handover-section inventory-section"><div className="section-number">IV</div><h2>Kiểm kê hai bên</h2><p className="section-note">Người giao kiểm kê khi lập phiếu; người nhận đối chiếu lại trước khi ký.</p><div>{inventory.map(item=><article key={item.itemCode}><span>{checklistLabels[item.itemCode]||item.itemCode}</span><b>{item.isCompleted?'Người giao ✓':'Chưa kiểm'}</b><b>{item.receiverCheckedAt?'Người nhận ✓':'Chờ người nhận'}</b></article>)}</div></section>
 
 {Boolean(data.amendments?.length)&&<section className="handover-section amendment-section"><div className="section-number">ĐC</div><h2>Nhật ký trả lại và điều chỉnh</h2><div className="amendment-list">{data.amendments?.map((item,index)=><article key={item.id}><div><strong>Phiên bản {index+1}</strong><time>{new Intl.DateTimeFormat('vi-VN',{dateStyle:'short',timeStyle:'short'}).format(new Date(item.createdAt))}</time></div><p><b>Lý do:</b> {item.reason}</p>{typeof item.content.correction==='string'&&<p><b>Nội dung điều chỉnh:</b> {item.content.correction}</p>}{typeof item.content.scope==='string'&&<span>Phạm vi: {item.content.scope==='FINANCE'?'Tài chính':item.content.scope==='OPERATIONS'?'Vận hành':'Vận hành và tài chính'}</span>}</article>)}</div></section>}
@@ -169,7 +173,7 @@ function DetailContent(){
         <h2 id="sign-title">{signMode==='giver'?'Người giao ký phiếu':signMode==='receiver'?'Người nhận kiểm kê và ký':signMode==='supplement'?'Người nhận yêu cầu bổ sung':signMode==='management'?'BGĐ cơ sở ký duyệt':signMode==='accounting'?'Kế toán ký nghiệm thu':signMode==='amendment'?'Tạo bản điều chỉnh và ký lại':'Trả lại phiếu để điều chỉnh'}</h2>
         <p>Mọi thao tác được gắn với tài khoản, thời gian và nhật ký kiểm toán.</p>
         {(['receiver','supplement','amendment'] as SignMode[]).includes(signMode)&&<><label>Tài khoản người nhận<input value={username} autoComplete="username" onChange={event=>setUsername(event.target.value)} placeholder="Nhập tài khoản nhân viên"/></label><label>Mật khẩu<input type="password" value={password} autoComplete="current-password" onChange={event=>setPassword(event.target.value)} placeholder="Nhập mật khẩu"/></label></>}
-        {signMode==='receiver'&&<label className="inventory-confirm"><input type="checkbox" checked={inventoryConfirmed} onChange={event=>setInventoryConfirmed(event.target.checked)}/><span>Tôi và người giao đã cùng đối chiếu tiền/quỹ, tài sản quầy và toàn bộ nội dung bàn giao.</span></label>}
+        {signMode==='receiver'&&<label className="inventory-confirm"><input type="checkbox" checked={inventoryConfirmed} onChange={event=>setInventoryConfirmed(event.target.checked)}/><span>Tôi và người giao đã cùng đối chiếu tiền/quỹ, tài sản quầy, toàn bộ nội dung bàn giao và các tag phòng đang hoạt động.</span></label>}
         {(['supplement','management-return','accounting-return','amendment'] as SignMode[]).includes(signMode)&&<label>Lý do<textarea value={supplementReason} onChange={event=>setSupplementReason(event.target.value)} placeholder="Nêu rõ lý do và nội dung cần xử lý"/></label>}
         {signMode==='amendment'&&<><label>Phạm vi điều chỉnh<select value={amendmentScope} onChange={event=>setAmendmentScope(event.target.value as 'OPERATIONS'|'FINANCE'|'BOTH')}><option value="OPERATIONS">Vận hành</option><option value="FINANCE">Tài chính</option><option value="BOTH">Vận hành và tài chính</option></select></label><label>Nội dung điều chỉnh<textarea value={correction} onChange={event=>setCorrection(event.target.value)} placeholder="Ghi rõ dữ liệu bổ sung hoặc thay đổi so với phiên bản gốc"/></label></>}
         {!['supplement','management-return','accounting-return'].includes(signMode)&&<label>Họ và tên người ký<input value={signatureText} onChange={event=>setSignatureText(event.target.value)} placeholder="Nhập đúng họ tên trên tài khoản"/></label>}

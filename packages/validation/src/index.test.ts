@@ -1,3 +1,13 @@
 import {describe,expect,it} from 'vitest';import {createHandoverSchema,receiverAmendmentSchema,receiverSignatureSchema,signatureSchema} from './index';
 describe('createHandoverSchema',()=>{it('rejects empty data',()=>expect(createHandoverSchema.safeParse({}).success).toBe(false));});
 describe('four-signature workflow validation',()=>{it('requires the receiver to confirm joint inventory',()=>expect(receiverSignatureSchema.safeParse({username:'nv02',password:'A25@123456',signatureText:'Trần Văn Nam',inventoryConfirmed:false}).success).toBe(false));it('accepts a complete receiver signature request',()=>expect(receiverSignatureSchema.safeParse({username:'nv02',password:'A25@123456',signatureText:'Trần Văn Nam',inventoryConfirmed:true}).success).toBe(true));it('rejects an empty signature',()=>expect(signatureSchema.safeParse({signatureText:' '}).success).toBe(false));it('accepts a signed receiver amendment',()=>expect(receiverAmendmentSchema.safeParse({username:'nv02',password:'A25@123456',signatureText:'Trần Văn Nam',reason:'Kế toán yêu cầu làm rõ',correction:'Bổ sung chứng từ khoản chi 280.000 đồng',scope:'FINANCE'}).success).toBe(true));it('rejects an amendment without correction details',()=>expect(receiverAmendmentSchema.safeParse({username:'nv02',password:'A25@123456',signatureText:'Trần Văn Nam',reason:'Kế toán yêu cầu làm rõ',correction:'',scope:'FINANCE'}).success).toBe(false));});
+
+import {createRoomAttentionTagSchema,updateRoomAttentionTagSchema,closeRoomAttentionTagSchema} from './index';
+const validRoomTag={branchId:'00000000-0000-4000-8000-000000000001',stayReference:'BK-20260728-001',roomNumber:'512',guestName:'Nguyễn Văn A',checkInDate:'2026-07-27',expectedCheckOutDate:'2026-07-30',tagType:'SPECIAL_REQUEST',priority:'IMPORTANT',title:'Khách cần gối bổ sung',details:'Chuẩn bị thêm hai gối trước 20:00.'};
+describe('room attention tag validation',()=>{
+  it('accepts complete factual tag data',()=>expect(createRoomAttentionTagSchema.safeParse(validRoomTag).success).toBe(true));
+  it('rejects an emotional guest label',()=>expect(createRoomAttentionTagSchema.safeParse({...validRoomTag,details:'Khách khó, cần chú ý'}).success).toBe(false));
+  it('rejects checkout before check-in',()=>expect(createRoomAttentionTagSchema.safeParse({...validRoomTag,expectedCheckOutDate:'2026-07-26'}).success).toBe(false));
+  it('accepts a timeline update with priority and status',()=>expect(updateRoomAttentionTagSchema.safeParse({content:'Đã chuyển thêm hai gối lên phòng.',priority:'NORMAL',status:'RESOLVED'}).success).toBe(true));
+  it('requires both closing reason and final result',()=>expect(closeRoomAttentionTagSchema.safeParse({closeReason:'Khách đã nhận đủ gối',finalResult:''}).success).toBe(false));
+});

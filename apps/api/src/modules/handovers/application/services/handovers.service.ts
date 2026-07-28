@@ -205,6 +205,7 @@ export class HandoversService {
         participants: { include: { user: true } },
         items: true,
         checklistResults: true,
+        roomAttentionTags: { include: { tag: true } },
         amendments: { orderBy: { createdAt: "asc" } },
       },
     });
@@ -227,6 +228,14 @@ export class HandoversService {
       throw new BadRequestException("Người nhận không thuộc chi nhánh");
     if (data.receiverId === userId)
       throw new BadRequestException("Người giao và người nhận phải khác nhau");
+
+    const activeRoomTags = await this.prisma.roomAttentionTag.findMany({
+      where: {
+        branchId: data.branchId,
+        status: { in: ["OPEN", "IN_PROGRESS", "RESOLVED"] },
+      },
+      orderBy: [{ priority: "desc" }, { updatedAt: "desc" }],
+    });
 
     const handoverId = randomUUID();
     const code = `BG-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${randomUUID().slice(0, 6).toUpperCase()}`;
@@ -262,9 +271,38 @@ export class HandoversService {
         },
       }),
       this.prisma.checklistResult.createMany({
-        data: ["GUEST_NOTES", "CASH", "KEYS"].map((itemCode) => ({
+        data: [
+          ...["GUEST_NOTES", "CASH", "KEYS"].map((itemCode) => ({
+            handoverId,
+            itemCode,
+          })),
+          ...(activeRoomTags.length
+            ? [{
+                handoverId,
+                itemCode: "ROOM_ATTENTION_TAGS",
+                isCompleted: true,
+                completedBy: userId,
+                completedAt: new Date(),
+              }]
+            : []),
+        ],
+      }),
+      this.prisma.handoverRoomAttentionTag.createMany({
+        data: activeRoomTags.map((tag) => ({
           handoverId,
-          itemCode,
+          tagId: tag.id,
+          snapshot: {
+            roomNumber: tag.roomNumber,
+            guestName: tag.guestName,
+            stayReference: tag.stayReference,
+            tagType: tag.tagType,
+            priority: tag.priority,
+            title: tag.title,
+            details: tag.details,
+            status: tag.status,
+            expectedCheckOutDate: tag.expectedCheckOutDate.toISOString(),
+            updatedAt: tag.updatedAt.toISOString(),
+          },
         })),
       }),
       this.prisma.auditLog.create({
@@ -561,6 +599,10 @@ export class HandoversService {
           receiverCheckedBy: employee.id,
           receiverCheckedAt: now,
         },
+      });
+      await tx.handoverRoomAttentionTag.updateMany({
+        where: { handoverId: id },
+        data: { acknowledgedById: employee.id, acknowledgedAt: now },
       });
       await tx.handoverParticipant.update({
         where: {

@@ -176,3 +176,30 @@ Kết quả xác minh:
 | `pnpm --filter @a25/api build` | **PASS** |
 | Web unit tests | **FAIL (môi trường)** - Vitest/esbuild bị sandbox Windows từ chối đọc thư mục cha trước khi tải cấu hình; không có test nào được chạy |
 | Supabase `db push --linked` | **PASS** |
+## Tag phòng cần lưu ý - 28/07/2026
+
+Trạng thái: **HOÀN TẤT**
+
+- Thêm mục **Lưu ý phòng** cho Lễ tân và Quản lý; dữ liệu dùng chung trong đúng chi nhánh.
+- Tạo, lọc, xem chi tiết, cập nhật dòng thời gian, đổi ưu tiên/trạng thái, đóng và hủy tag theo quyền.
+- Hỗ trợ đủ 8 loại tag, 3 mức ưu tiên, 5 trạng thái và cảnh báo khẩn cấp/gần check-out/lâu chưa cập nhật.
+- Chống trùng theo chi nhánh + lượt lưu trú + số phòng + loại vấn đề; không tạo sẵn phòng hoặc tag.
+- Lịch sử và audit log là append-only; database chặn xóa vĩnh viễn.
+- Có API cảnh báo check-out khi còn tag hoạt động.
+- Phiếu bàn giao tự chụp snapshot tag đang hoạt động; người nhận xác nhận đã đọc và tiếp nhận.
+
+API: `GET/POST /api/v1/room-attention-tags`, `GET /checkout-warning`, `GET/PATCH /:id`, `POST /:id/close`, `POST /:id/cancel`.
+
+Migrations `20260728000700_room_attention_tags.sql` và `20260728000800_protect_room_attention_timeline.sql`: **PASS**, đã áp dụng lên Supabase; local/remote cùng phiên bản.
+
+| Kiểm tra | Kết quả |
+| --- | --- |
+| Prisma Client generation | **PASS** |
+| Validation tests | **PASS** - 11/11 toàn bộ, gồm 5 test tag phòng |
+| API unit tests tag phòng | **PASS** - 6/6 |
+| API integration tests tag phòng | **PASS** - 4/4 |
+| `pnpm typecheck` | **PASS** - 8/8 packages |
+| `pnpm lint` | **PASS** - 8/8 packages |
+| `pnpm --filter @a25/web build` | **PASS** - có `/room-attention-tags` và `/room-attention-tags/detail` |
+| `pnpm --filter @a25/api build` | **PASS** |
+| Supabase migration parity | **PASS** - 20/20 migrations khớp |
