@@ -272,8 +272,18 @@ export default function RoomAttentionTagDetailPage() {
         </div>
       )}
       {finishMode && (
-        <div className="room-tag-modal">
-          <form className="room-tag-form compact" onSubmit={finish}>
+        <div
+          className="room-tag-modal room-tag-finish-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="room-tag-finish-title"
+        >
+          <form
+            className={`room-tag-form room-tag-finish-form ${
+              finishMode === "cancel" ? "is-danger" : ""
+            }`}
+            onSubmit={finish}
+          >
             <header>
               <div>
                 <span>
@@ -281,31 +291,79 @@ export default function RoomAttentionTagDetailPage() {
                     ? "HỦY TAG TẠO NHẦM"
                     : "HOÀN TẤT THEO DÕI"}
                 </span>
-                <h2>
+                <h2 id="room-tag-finish-title">
                   {finishMode === "cancel"
                     ? "Xác nhận hủy tag"
                     : "Đóng tag phòng"}
                 </h2>
+                <p>
+                  {finishMode === "cancel"
+                    ? "Ghi rõ nguyên nhân để lịch sử thao tác luôn minh bạch."
+                    : "Xác nhận kết quả cuối cùng trước khi kết thúc theo dõi."}
+                </p>
               </div>
-              <button type="button" onClick={() => setFinishMode(null)}>
+              <button
+                type="button"
+                aria-label="Đóng hộp thoại"
+                onClick={() => setFinishMode(null)}
+              >
                 ×
               </button>
             </header>
-            <label>
-              Lý do {finishMode === "cancel" ? "hủy" : "đóng"}
-              <input name="closeReason" required minLength={3} />
-            </label>
-            <label>
-              Kết quả xử lý cuối cùng
-              <textarea name="finalResult" required minLength={3} rows={4} />
-            </label>
-            <button className="room-tag-submit" disabled={busy}>
-              {busy
-                ? "Đang lưu..."
-                : finishMode === "cancel"
-                  ? "Hủy tag"
-                  : "Đóng tag"}
-            </button>
+            <div className="room-tag-form-content room-tag-finish-content">
+              <div className="room-tag-finish-note">
+                <span aria-hidden="true">✓</span>
+                <p>
+                  Tag sẽ biến mất khỏi danh sách đang theo dõi nhưng toàn bộ lịch
+                  sử vẫn được lưu lại.
+                </p>
+              </div>
+              <label>
+                <span>
+                  Lý do {finishMode === "cancel" ? "hủy" : "đóng"}
+                  <b aria-hidden="true"> *</b>
+                </span>
+                <input
+                  name="closeReason"
+                  required
+                  minLength={3}
+                  placeholder={
+                    finishMode === "cancel"
+                      ? "Ví dụ: Tag được tạo nhầm"
+                      : "Ví dụ: Yêu cầu đã được xử lý"
+                  }
+                />
+              </label>
+              <label>
+                <span>
+                  Kết quả xử lý cuối cùng<b aria-hidden="true"> *</b>
+                </span>
+                <textarea
+                  name="finalResult"
+                  required
+                  minLength={3}
+                  rows={4}
+                  placeholder="Mô tả kết quả, nội dung đã bàn giao hoặc xác nhận với khách..."
+                />
+                <small>Tối thiểu 3 ký tự · Nội dung được lưu vào lịch sử tag</small>
+              </label>
+            </div>
+            <footer className="room-tag-form-actions room-tag-finish-actions">
+              <button
+                type="button"
+                className="room-tag-finish-secondary"
+                onClick={() => setFinishMode(null)}
+              >
+                Quay lại
+              </button>
+              <button className="room-tag-submit" disabled={busy}>
+                {busy
+                  ? "Đang lưu..."
+                  : finishMode === "cancel"
+                    ? "Xác nhận hủy tag"
+                    : "Xác nhận đóng tag"}
+              </button>
+            </footer>
           </form>
         </div>
       )}

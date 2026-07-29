@@ -123,3 +123,29 @@ body :where(input,textarea)::placeholder{font-family:inherit}
 /* Prevent iOS text inflation and focus zoom across the fixed mobile sheet */
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 @media(max-width:520px){.room-tag-form,.room-tag-form-content{-webkit-text-size-adjust:100%;text-size-adjust:100%}.room-tag-form-content :where(input,select,textarea):focus{font-size:16px!important;transform:none}}
+/* Room tag completion dialog */
+.room-tag-finish-modal{padding:18px 14px max(18px,env(safe-area-inset-bottom));align-items:center}
+.room-tag-finish-form{width:min(100%,470px);height:auto;max-height:min(88dvh,680px);border-radius:24px;box-shadow:0 24px 72px rgba(5,24,48,.28);overflow:hidden}
+.room-tag-finish-form>header{align-items:flex-start;padding:20px 20px 16px}
+.room-tag-finish-form>header>div{min-width:0;padding-right:10px}
+.room-tag-finish-form>header h2{margin-top:5px;font-size:1.3rem;line-height:1.2;color:#172235}
+.room-tag-finish-form>header p{margin:7px 0 0;color:#718096;font-size:.68rem;line-height:1.5}
+.room-tag-finish-content{padding:16px 20px 20px}
+.room-tag-finish-content>label{margin-top:15px;gap:7px;color:#405069;font-size:.72rem}
+.room-tag-finish-content label>span{display:block;font-weight:800}
+.room-tag-finish-content label b{color:#dc3445}
+.room-tag-finish-content input{height:48px;padding:0 13px;background:#fbfcff}
+.room-tag-finish-content textarea{min-height:120px;padding:13px;line-height:1.55;resize:none;background:#fbfcff}
+.room-tag-finish-content label>small{color:#8793a5;font-size:.59rem;font-weight:500;line-height:1.4}
+.room-tag-finish-note{display:flex;align-items:flex-start;gap:10px;padding:11px 12px;border:1px solid #d9e6f7;border-radius:13px;background:#f4f8fe}
+.room-tag-finish-note>span{display:grid;place-items:center;flex:0 0 24px;width:24px;height:24px;border-radius:50%;background:#e1edff;color:#1764e8;font-size:.72rem;font-weight:900}
+.room-tag-finish-note p{margin:1px 0 0;color:#5f7088;font-size:.64rem;line-height:1.5}
+.room-tag-finish-actions{display:grid;grid-template-columns:minmax(100px,.72fr) minmax(0,1.28fr);gap:10px;padding:13px 20px calc(13px + env(safe-area-inset-bottom))}
+.room-tag-finish-actions .room-tag-submit,.room-tag-finish-secondary{min-height:48px;margin:0;border:0;border-radius:13px;font-size:.72rem;font-weight:800}
+.room-tag-finish-secondary{background:#eef3f9;color:#43536a}
+.room-tag-finish-form.is-danger>header span{color:#c62f3f}
+.room-tag-finish-form.is-danger .room-tag-finish-note{border-color:#f3d9dd;background:#fff7f8}
+.room-tag-finish-form.is-danger .room-tag-finish-note>span{background:#ffe6e9;color:#c62f3f}
+.room-tag-finish-form.is-danger .room-tag-submit{background:#c62f3f;box-shadow:0 8px 18px rgba(198,47,63,.2)}
+@media(max-width:520px){.room-tag-finish-modal{padding:0;align-items:flex-end}.room-tag-finish-form{width:100%;max-height:calc(100dvh - max(22px,env(safe-area-inset-top)));border-radius:25px 25px 0 0}.room-tag-finish-form>header{padding:19px 18px 15px}.room-tag-finish-content{padding:14px 18px 18px}.room-tag-finish-actions{padding-right:18px;padding-left:18px}.room-tag-finish-content input,.room-tag-finish-content textarea{font-size:16px!important}}
+@media(max-width:360px){.room-tag-finish-actions{grid-template-columns:1fr}.room-tag-finish-secondary{order:2}.room-tag-finish-form>header h2{font-size:1.16rem}}
