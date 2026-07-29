@@ -74,9 +74,10 @@ export default function RoomAttentionTagDetailPage() {
   async function update(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!id) return;
+    const form = event.currentTarget;
     setBusy(true);
     setActionError("");
-    const data = new FormData(event.currentTarget);
+    const data = new FormData(form);
     try {
       await roomAttentionTagsApi.update(id, {
         content: String(data.get("content")),
@@ -84,7 +85,7 @@ export default function RoomAttentionTagDetailPage() {
         status: String(data.get("status")) as
           "OPEN" | "IN_PROGRESS" | "RESOLVED",
       });
-      event.currentTarget.reset();
+      form.reset();
       await queryClient.invalidateQueries({ queryKey: roomTagKeys.all });
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Không thể cập nhật tag");
@@ -95,9 +96,10 @@ export default function RoomAttentionTagDetailPage() {
   async function finish(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!id || !finishMode) return;
+    const form = event.currentTarget;
     setBusy(true);
     setActionError("");
-    const data = new FormData(event.currentTarget);
+    const data = new FormData(form);
     const input = {
       closeReason: String(data.get("closeReason")),
       finalResult: String(data.get("finalResult")),
