@@ -45,7 +45,7 @@ export function HandoverList({view='reception',showFilters=false,limit,compact=f
   const clearFilters=()=>{setGiverId('');setReceiverId('');setHandoverDate('');setSearchQuery('')};
 
   if(isLoading)return <div className="handover-skeleton" aria-label="Đang tải"><i/><i/><i/></div>;
-  if(error)return <div role="alert" className="empty error-state"><div className="empty-icon">!</div><strong>Chưa thể kết nối dữ liệu</strong><p>{error.message}</p><button disabled={isFetching} onClick={()=>void refetch()}>{isFetching?'Đang thử lại...':'Thử lại'}</button></div>;
+  if(error&&!data)return <div role="alert" className="empty error-state"><div className="empty-icon">!</div><strong>Chưa thể kết nối dữ liệu</strong><p>{error.message}</p><button disabled={isFetching} onClick={()=>void refetch()}>{isFetching?'Đang thử lại...':'Thử lại'}</button></div>;
   if(!roleVisible.length){
     const title=view==='management'?'Không có phiếu chờ BGĐ duyệt':view==='accounting'?'Không có phiếu chờ kế toán':'Ca trực chưa có bàn giao';
     if(compact)return <div className="dashboard-empty-state"><span>✓</span><div><strong>{title}</strong><p>Hiện chưa có nội dung cần xử lý.</p></div></div>;

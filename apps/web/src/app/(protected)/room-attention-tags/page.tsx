@@ -1,10 +1,10 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   CreateRoomTag,
-  RoomAttentionTag,
   RoomTagFilters,
   RoomTagPriority,
   RoomTagType,
@@ -13,6 +13,10 @@ import {
   roomTagStatusLabels,
   roomTagTypeLabels,
 } from "@/features/room-attention-tags/api";
+import {
+  roomTagKeys,
+  useRoomAttentionTags,
+} from "@/features/room-attention-tags/hooks";
 
 const types = Object.keys(roomTagTypeLabels) as RoomTagType[];
 const priorities = Object.keys(roomTagPriorityLabels) as RoomTagPriority[];
@@ -33,12 +37,23 @@ const formatTime = (value: string) =>
 
 export default function RoomAttentionTagsPage() {
   const [filters, setFilters] = useState<RoomTagFilters>({ active: true });
-  const [tags, setTags] = useState<RoomAttentionTag[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [queryFilters, setQueryFilters] = useState<RoomTagFilters>({
+    active: true,
+  });
+  const [actionError, setActionError] = useState("");
   const [creating, setCreating] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const queryClient = useQueryClient();
+  const {
+    data: tags = [],
+    error: queryError,
+    isLoading: loading,
+    refetch,
+  } = useRoomAttentionTags(queryFilters);
+  const error =
+    actionError ||
+    (tags.length === 0 && queryError instanceof Error ? queryError.message : "");
   const activeFilterCount = [
     filters.active === false,
     Boolean(filters.priority),
@@ -46,20 +61,13 @@ export default function RoomAttentionTagsPage() {
     Boolean(filters.expectedCheckOutDate),
   ].filter(Boolean).length;
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      setTags(await roomAttentionTagsApi.list(filters));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Không thể tải tag phòng");
-    } finally {
-      setLoading(false);
-    }
-  }, [filters]);
   useEffect(() => {
-    queueMicrotask(() => void load());
-  }, [load]);
+    const timeout = window.setTimeout(
+      () => setQueryFilters(filters),
+      filters.roomNumber ? 250 : 0,
+    );
+    return () => window.clearTimeout(timeout);
+  }, [filters]);
   useEffect(() => {
     if (!showCreate) return;
     const previousOverflow = document.body.style.overflow;
@@ -72,7 +80,7 @@ export default function RoomAttentionTagsPage() {
   async function createTag(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setCreating(true);
-    setError("");
+    setActionError("");
     const data = new FormData(event.currentTarget);
     const branchId = localStorage.getItem("a25.branchId") ?? "";
     const input = Object.fromEntries(data.entries());
@@ -82,9 +90,9 @@ export default function RoomAttentionTagsPage() {
         branchId,
       } as CreateRoomTag);
       setShowCreate(false);
-      await load();
+      await queryClient.invalidateQueries({ queryKey: roomTagKeys.all });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Không thể tạo tag");
+      setActionError(err instanceof Error ? err.message : "Không thể tạo tag");
     } finally {
       setCreating(false);
     }
@@ -254,7 +262,14 @@ export default function RoomAttentionTagsPage() {
       {error && (
         <div className="room-tag-error" role="alert">
           ! {error}
-          <button onClick={() => void load()}>Thử lại</button>
+          <button
+            onClick={() => {
+              setActionError("");
+              void refetch();
+            }}
+          >
+            Thử lại
+          </button>
         </div>
       )}
       {loading ? (

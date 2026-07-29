@@ -1,15 +1,19 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import Link from "next/link";
+import { useQueryClient } from "@tanstack/react-query";
 import {
-  RoomAttentionTag,
   RoomTagPriority,
   roomAttentionTagsApi,
   roomTagPriorityLabels,
   roomTagStatusLabels,
   roomTagTypeLabels,
 } from "@/features/room-attention-tags/api";
+import {
+  roomTagKeys,
+  useRoomAttentionTag,
+} from "@/features/room-attention-tags/hooks";
 import { roleGroup, storedEmployeeRole } from "@/lib/employee-role";
 
 const formatDate = (value: string, withTime = false) =>
@@ -32,37 +36,29 @@ export default function RoomAttentionTagDetailPage() {
       ? ""
       : (new URLSearchParams(window.location.search).get("id") ?? ""),
   );
-  const [tag, setTag] = useState<RoomAttentionTag | null>(null);
-  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const [actionError, setActionError] = useState("");
   const [finishMode, setFinishMode] = useState<"close" | "cancel" | null>(null);
+  const queryClient = useQueryClient();
+  const {
+    data: tag,
+    error: queryError,
+    isLoading: loading,
+  } = useRoomAttentionTag(id);
+  const error =
+    actionError ||
+    (!id
+      ? "Thiếu mã tag phòng"
+      : queryError instanceof Error
+        ? queryError.message
+        : "");
   const canCancel = roleGroup(storedEmployeeRole()?.code) === "management";
-  const load = useCallback(async (tagId: string) => {
-    setLoading(true);
-    setError("");
-    try {
-      setTag(await roomAttentionTagsApi.get(tagId));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Không thể tải tag phòng");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-  useEffect(() => {
-    queueMicrotask(() => {
-      if (id) void load(id);
-      else {
-        setError("Thiếu mã tag phòng");
-        setLoading(false);
-      }
-    });
-  }, [id, load]);
+
   async function update(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!id) return;
     setBusy(true);
-    setError("");
+    setActionError("");
     const data = new FormData(event.currentTarget);
     try {
       await roomAttentionTagsApi.update(id, {
@@ -72,9 +68,9 @@ export default function RoomAttentionTagDetailPage() {
           "OPEN" | "IN_PROGRESS" | "RESOLVED",
       });
       event.currentTarget.reset();
-      await load(id);
+      await queryClient.invalidateQueries({ queryKey: roomTagKeys.all });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Không thể cập nhật tag");
+      setActionError(err instanceof Error ? err.message : "Không thể cập nhật tag");
     } finally {
       setBusy(false);
     }
@@ -83,7 +79,7 @@ export default function RoomAttentionTagDetailPage() {
     event.preventDefault();
     if (!id || !finishMode) return;
     setBusy(true);
-    setError("");
+    setActionError("");
     const data = new FormData(event.currentTarget);
     const input = {
       closeReason: String(data.get("closeReason")),
@@ -93,9 +89,9 @@ export default function RoomAttentionTagDetailPage() {
       if (finishMode === "cancel") await roomAttentionTagsApi.cancel(id, input);
       else await roomAttentionTagsApi.close(id, input);
       setFinishMode(null);
-      await load(id);
+      await queryClient.invalidateQueries({ queryKey: roomTagKeys.all });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Không thể hoàn tất tag");
+      setActionError(err instanceof Error ? err.message : "Không thể hoàn tất tag");
     } finally {
       setBusy(false);
     }
