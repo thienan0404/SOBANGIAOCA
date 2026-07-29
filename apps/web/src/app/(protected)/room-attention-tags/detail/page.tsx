@@ -22,7 +22,13 @@ const getClientTagId = () =>
 const getServerTagId = () => "";
 const getClientReady = () => true;
 const getServerReady = () => false;
-const formatDate = (value: string, withTime = false) =>
+const personInitials = (name: string) => {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return parts
+    .slice(-2)
+    .map((part) => part[0]?.toLocaleUpperCase("vi") ?? "")
+    .join("");
+};const formatDate = (value: string, withTime = false) =>
   new Intl.DateTimeFormat(
     "vi-VN",
     withTime
@@ -186,21 +192,31 @@ export default function RoomAttentionTagDetailPage() {
         <p>{tag.details}</p>
       </section>
       {active && (
-        <form className="tag-detail-section tag-update-form" onSubmit={update}>
-          <span>THÊM CẬP NHẬT</span>
-          <label>
-            Nội dung
+        <form
+          className="tag-detail-section tag-update-form tag-progress-form"
+          onSubmit={update}
+        >
+          <div className="tag-section-heading">
+            <span className="tag-section-icon" aria-hidden="true">↻</span>
+            <div>
+              <span>TIẾN ĐỘ XỬ LÝ</span>
+              <h2>Thêm cập nhật mới</h2>
+              <p>Ghi lại tình hình thực tế và việc ca tiếp theo cần thực hiện.</p>
+            </div>
+          </div>
+          <label className="tag-progress-content">
+            <span>Nội dung cập nhật</span>
             <textarea
               name="content"
               required
               minLength={3}
               rows={3}
-              placeholder="Tình hình thực tế và hành động tiếp theo"
+              placeholder="Ví dụ: Đã liên hệ kỹ thuật, đang chờ kiểm tra lúc 15:00..."
             />
           </label>
-          <div className="form-grid two">
+          <div className="form-grid two tag-progress-options">
             <label>
-              Mức độ
+              <span>Mức độ ưu tiên</span>
               <select name="priority" defaultValue={tag.priority}>
                 <option value="NORMAL">Bình thường</option>
                 <option value="IMPORTANT">Quan trọng</option>
@@ -208,7 +224,7 @@ export default function RoomAttentionTagDetailPage() {
               </select>
             </label>
             <label>
-              Trạng thái
+              <span>Trạng thái xử lý</span>
               <select name="status" defaultValue={tag.status}>
                 <option value="OPEN">Đang theo dõi</option>
                 <option value="IN_PROGRESS">Đang xử lý</option>
@@ -216,36 +232,46 @@ export default function RoomAttentionTagDetailPage() {
               </select>
             </label>
           </div>
-          <button disabled={busy}>
-            {busy ? "Đang lưu..." : "Lưu cập nhật"}
+          <button className="tag-progress-submit" disabled={busy}>
+            <span aria-hidden="true">＋</span>
+            {busy ? "Đang lưu cập nhật..." : "Lưu cập nhật"}
           </button>
         </form>
       )}
-      <section className="tag-detail-section">
+      <section className="tag-detail-section tag-history-section">
         <div className="timeline-heading">
-          <span>DÒNG THỜI GIAN</span>
+          <div>
+            <span>DÒNG THỜI GIAN</span>
+            <h2>Lịch sử cập nhật</h2>
+          </div>
           <b>{tag.updates?.length ?? 0} cập nhật</b>
         </div>
         <div className="tag-timeline">
           {tag.updates?.map((item) => (
             <article key={item.id}>
-              <i />
-              <div>
+              <div className="tag-timeline-avatar" aria-hidden="true">
+                {personInitials(item.actor.fullName)}
+              </div>
+              <div className="tag-timeline-card">
                 <header>
-                  <strong>{item.actor.fullName}</strong>
-                  <span>{item.shiftInstance.shiftCode}</span>
+                  <div>
+                    <strong>{item.actor.fullName}</strong>
+                    <span>{item.shiftInstance.shiftCode}</span>
+                  </div>
+                  <time>{formatDate(item.createdAt, true)}</time>
                 </header>
                 <p>{item.content}</p>
-                <small>
-                  {formatDate(item.createdAt, true)} ·{" "}
-                  {item.action === "CREATED"
-                    ? "Tạo tag"
-                    : item.action === "CLOSED"
-                      ? "Đóng tag"
-                      : item.action === "CANCELLED"
-                        ? "Hủy tag"
-                        : "Cập nhật"}
-                </small>
+                <footer>
+                  <span>
+                    {item.action === "CREATED"
+                      ? "Tạo tag"
+                      : item.action === "CLOSED"
+                        ? "Đóng tag"
+                        : item.action === "CANCELLED"
+                          ? "Hủy tag"
+                          : "Cập nhật tiến độ"}
+                  </span>
+                </footer>
               </div>
             </article>
           ))}
@@ -262,16 +288,23 @@ export default function RoomAttentionTagDetailPage() {
         </section>
       )}
       {active && (
-        <div className="tag-final-actions">
-          <button onClick={() => setFinishMode("close")}>Đóng tag</button>
+        <section className="tag-final-actions">
+          <div className="tag-final-copy">
+            <span>HOÀN TẤT THEO DÕI</span>
+            <strong>Kết thúc tag phòng</strong>
+            <p>Chỉ đóng tag khi nội dung đã được xử lý hoặc bàn giao đầy đủ.</p>
+          </div>
+          <button onClick={() => setFinishMode("close")}>
+            <span aria-hidden="true">✓</span>
+            Đóng tag
+          </button>
           {canCancel && (
             <button className="danger" onClick={() => setFinishMode("cancel")}>
               Hủy tag tạo nhầm
             </button>
           )}
-        </div>
-      )}
-      {finishMode && (
+        </section>
+      )}      {finishMode && (
         <div
           className="room-tag-modal room-tag-finish-modal"
           role="dialog"
