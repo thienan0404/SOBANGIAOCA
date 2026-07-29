@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -16,6 +16,12 @@ import {
 } from "@/features/room-attention-tags/hooks";
 import { roleGroup, storedEmployeeRole } from "@/lib/employee-role";
 
+const subscribeLocation = () => () => undefined;
+const getClientTagId = () =>
+  new URLSearchParams(window.location.search).get("id") ?? "";
+const getServerTagId = () => "";
+const getClientReady = () => true;
+const getServerReady = () => false;
 const formatDate = (value: string, withTime = false) =>
   new Intl.DateTimeFormat(
     "vi-VN",
@@ -31,10 +37,15 @@ const formatDate = (value: string, withTime = false) =>
   ).format(new Date(value));
 
 export default function RoomAttentionTagDetailPage() {
-  const [id] = useState(() =>
-    typeof window === "undefined"
-      ? ""
-      : (new URLSearchParams(window.location.search).get("id") ?? ""),
+  const id = useSyncExternalStore(
+    subscribeLocation,
+    getClientTagId,
+    getServerTagId,
+  );
+  const searchReady = useSyncExternalStore(
+    subscribeLocation,
+    getClientReady,
+    getServerReady,
   );
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState("");
@@ -47,7 +58,7 @@ export default function RoomAttentionTagDetailPage() {
   } = useRoomAttentionTag(id);
   const error =
     actionError ||
-    (!id
+    (searchReady && !id
       ? "Thiếu mã tag phòng"
       : queryError instanceof Error
         ? queryError.message
@@ -96,7 +107,7 @@ export default function RoomAttentionTagDetailPage() {
       setBusy(false);
     }
   }
-  if (loading)
+  if (!searchReady || loading)
     return (
       <div className="room-tag-detail-loading">
         <div className="loader" />
