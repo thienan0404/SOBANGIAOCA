@@ -16,8 +16,14 @@ function dateInVietnam(value:string){
   const get=(type:string)=>parts.find(part=>part.type===type)?.value??'';
   return `${get('year')}-${get('month')}-${get('day')}`;
 }
-function formatDate(value:string){
-  return new Intl.DateTimeFormat('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',dateStyle:'short',timeStyle:'short'}).format(new Date(value));
+function formatShiftMeta(shift:{code:string;startsAt:string;endsAt:string}|null,value:string){
+  const dateValue=shift?.startsAt??value;
+  const date=new Intl.DateTimeFormat('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(dateValue));
+  if(!shift)return `Ngày ${date}`;
+  const time=new Intl.DateTimeFormat('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',hour12:false});
+  const matched=shift.code.match(/^CA\s*(\d+)$/i);
+  const shiftName=matched?`Ca ${matched[1]}`:shift.code;
+  return `Ngày ${date} · ${shiftName} · ${time.format(new Date(shift.startsAt))}–${time.format(new Date(shift.endsAt))}`;
 }
 function normalizeSearch(value:string){
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('vi').trim();
@@ -64,6 +70,6 @@ export function HandoverList({view='reception',showFilters=false,limit,compact=f
       {hasFilters&&<button type="button" onClick={clearFilters}>Xóa bộ lọc</button>}
     </section>}
     {!compact&&<div className="list-status"><span><i/> Đang đồng bộ</span><b>{visible.length}/{roleVisible.length} phiếu</b></div>}
-    {!visible.length?<div className="empty filtered-empty"><strong>Không tìm thấy phiếu phù hợp</strong><p>Hãy thay đổi hoặc xóa bộ lọc để xem lại danh sách.</p><button type="button" onClick={clearFilters}>Xóa bộ lọc</button></div>:<div className={`card-list${compact?' compact-handover-list':''}`}>{displayed.map(x=><Link className="handover-card amber" href={`/handovers/detail?id=${x.id}`} key={x.id}><div className="card-icon">⇄</div><div className="card-body"><div className="card-title"><h3>{x.code}</h3><span>{labels[x.status]}</span></div><p className="detail">{x.giver?.name??'Người giao'} → {x.receiver?.name??'Người nhận'}</p><small className="handover-card-date">{formatDate(x.createdAt)}</small></div><span className="card-chevron">›</span></Link>)}</div>}
+    {!visible.length?<div className="empty filtered-empty"><strong>Không tìm thấy phiếu phù hợp</strong><p>Hãy thay đổi hoặc xóa bộ lọc để xem lại danh sách.</p><button type="button" onClick={clearFilters}>Xóa bộ lọc</button></div>:<div className={`card-list${compact?' compact-handover-list':''}`}>{displayed.map(x=><Link className="handover-card amber" href={`/handovers/detail?id=${x.id}`} key={x.id}><div className="card-icon">⇄</div><div className="card-body"><div className="card-title"><h3>{x.code}</h3><span>{labels[x.status]}</span></div><p className="detail">{x.giver?.name??'Người giao'} → {x.receiver?.name??'Người nhận'}</p><small className="handover-card-shift">{formatShiftMeta(x.shift,x.createdAt)}</small></div><span className="card-chevron">›</span></Link>)}</div>}
   </>;
 }

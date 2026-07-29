@@ -6,7 +6,7 @@ export type HandoverParticipant={id:string;participantType:ParticipantType;confi
 export type InventoryCheck={itemCode:string;isCompleted:boolean;receiverCheckedAt?:string|null};
 export type HandoverAmendment={id:string;reason:string;content:Record<string,unknown>;createdAt:string};
 export type HandoverTask={id:string;title:string;details:string;priority:'LOW'|'NORMAL'|'HIGH'|'URGENT';roomNumber:string|null};
-export type HandoverListItem=HandoverSummary&{searchContent:string;tasks:HandoverTask[]};
+export type HandoverListItem=HandoverSummary&{searchContent:string;tasks:HandoverTask[];shift:{code:string;startsAt:string;endsAt:string}|null};
 export type HandoverRoomTagSnapshot={roomNumber:string;guestName:string;stayReference:string;tagType:string;priority:string;title:string;details:string;status:string;expectedCheckOutDate:string;updatedAt:string};
 export type HandoverRoomTag={id:string;tagId:string;snapshot:HandoverRoomTagSnapshot;acknowledgedAt?:string|null};
 export type HandoverDetail=HandoverSummary&{notes?:string;createdAt?:string;submittedAt?:string|null;confirmedAt?:string|null;operationalLockedAt?:string|null;lockedAt?:string|null;amendments?:HandoverAmendment[];participants?:HandoverParticipant[];checklistResults?:InventoryCheck[];items:Array<{id:string;title:string;details:string;category:string;priority:string;roomNumber?:string|null}>;roomAttentionTags?:HandoverRoomTag[]};
@@ -35,6 +35,7 @@ type DirectHandoverRow={
   created_at:string;
   submitted_at:string|null;
   notes:string|null;
+  shift:{shift_code:string;starts_at:string;ends_at:string}|null;
   items:Array<{id:string;title:string;details:string;category:string;priority:'LOW'|'NORMAL'|'HIGH'|'URGENT';room_number:string|null}>;
   participants:Array<{
     participant_type:ParticipantType;
@@ -63,6 +64,7 @@ async function listHandovers(branchId?:string):Promise<HandoverListItem[]>{
       created_at,
       submitted_at,
       notes,
+      shift:shift_instances!handovers_shift_instance_id_fkey(shift_code,starts_at,ends_at),
       items:handover_items(id,title,details,category,priority,room_number),
       participants:handover_participants(
         participant_type,
@@ -78,7 +80,7 @@ async function listHandovers(branchId?:string):Promise<HandoverListItem[]>{
   return rows.map(row=>{
     const giver=row.participants.find(item=>item.participant_type==='GIVER')?.user;
     const receiver=row.participants.find(item=>item.participant_type==='RECEIVER')?.user;
-    return{id:row.id,code:row.code,status:row.status,branchId:row.branch_id,giver:{id:giver?.id??'',name:giver?.full_name??'Người giao'},receiver:{id:receiver?.id??'',name:receiver?.full_name??'Người nhận'},createdAt:row.created_at,searchContent:[row.notes,...row.items.flatMap(item=>[item.title,item.details])].filter(Boolean).join(' '),tasks:row.items.filter(item=>item.category==='TASK').map(item=>({id:item.id,title:item.title,details:item.details,priority:item.priority,roomNumber:item.room_number})),...(row.submitted_at?{submittedAt:row.submitted_at}:{})};
+    return{id:row.id,code:row.code,status:row.status,branchId:row.branch_id,giver:{id:giver?.id??'',name:giver?.full_name??'Người giao'},receiver:{id:receiver?.id??'',name:receiver?.full_name??'Người nhận'},createdAt:row.created_at,shift:row.shift?{code:row.shift.shift_code,startsAt:row.shift.starts_at,endsAt:row.shift.ends_at}:null,searchContent:[row.notes,...row.items.flatMap(item=>[item.title,item.details])].filter(Boolean).join(' '),tasks:row.items.filter(item=>item.category==='TASK').map(item=>({id:item.id,title:item.title,details:item.details,priority:item.priority,roomNumber:item.room_number})),...(row.submitted_at?{submittedAt:row.submitted_at}:{})};
   });
 }
 
